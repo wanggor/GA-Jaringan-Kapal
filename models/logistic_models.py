@@ -119,20 +119,27 @@ class JaringanPelabuhan():
                 self.rute[nama] = rute
                 break
     
-    def draw(self,map_obj, track = False):
+    def draw(self,map_obj, track = False, data_kategori = None, color_picker= None):
         if track :
             poly = [i for i in self.rute.values()]
             if poly:
                 map_obj.addLayer(L.polyline(poly, options= "{color : '#b5b8bd'}"))
 
         for name,pel in self.lis_pelabuhan.items():
+
+            for n,i in enumerate(data_kategori):
+                if name in data_kategori[i]:
+                    break
+
             options = None
             if pel.kategori.lower() == "p":
-                options= "{color : '#0cb500', radius: 6}"
+                options= "{color : '#0cb500', radius: 8}"
             elif  pel.kategori.lower() == "u":
                 options= "{color : '#ff2617', radius: 8}"
             else:
-                options= "{color : '#0300b5', radius: 4}"
+                color = str(color_picker.get_hex(n))
+                options= "{color : '"+color+"', radius: 4}"
+
                 
             self.marker[name] = L.circleMarker(pel.posisi,options= options)
             self.marker[name].bindPopup(pel.nama.capitalize())
@@ -152,6 +159,121 @@ class JaringanPelabuhan():
                             })
             self.lis_pelabuhan[item['Pelabuhan']].Total_Nominal += biaya
             
+    def add_transit_cluster(self, data):
+        for name_pel,pel in self.lis_pelabuhan.items():
+            if pel.kategori == "U":
+                for brg in pel.barang:
+                    tujuan = brg["Tujuan Pelabuhan"]
+                    if (data["port"][tujuan]) == "R":
+                        brg["Transit"] = self.get_minimum_distance_pel(tujuan, data, "P")
+                    else:
+                        brg["Transit"] = "None"   
+            
+            elif pel.kategori == "R":
+                
+                for brg in pel.barang:
+                    tujuan = brg["Tujuan Pelabuhan"]
+                    asal = brg["Asal Pelabuhan"]
+
+                    kategori = None
+                    for kategori_cluster in data["Spesial PR"]:
+                        if asal in data["Spesial PR"][kategori_cluster]:
+                            kategori = kategori_cluster
+                            break
+
+                    if (data["port"][tujuan]) == "U":
+                        
+                        brg["Transit"] = self.get_minimum_distance_pel(asal, data, "P")
+                    
+                    elif (tujuan not in data["Spesial PR"][kategori]) and (data["port"][tujuan]) == "R":
+                        
+                        brg["Transit"] = []
+                        brg["Transit"].append(self.get_minimum_distance_pel(asal, data, "P"))
+                        brg["Transit"].append(self.get_minimum_distance_pel(tujuan, data, "P"))
+
+                    elif (tujuan not in data["Spesial PR"][kategori]) and (data["port"][tujuan]) == "P":
+                        
+                        brg["Transit"] = self.get_minimum_distance_pel(asal, data, "P")
+                    else:
+                        brg["Transit"] = "None"
+            else:
+                for brg in pel.barang:
+                    tujuan = brg["Tujuan Pelabuhan"]
+                    asal = brg["Asal Pelabuhan"]
+
+                    kategori = None
+                    for kategori_cluster in data["Spesial PR"]:
+                        if asal in data["Spesial PR"][kategori_cluster]:
+                            kategori = kategori_cluster
+                            break
+
+                    if (tujuan not in data["Spesial PR"][kategori]) and (data["port"][tujuan]) == "R":
+                        brg["Transit"] = self.get_minimum_distance_pel(tujuan, data, "P")
+                    else:
+                        brg["Transit"] = "None"
+            for brg in pel.barang:
+                brg["track"] = ""
+                if pel.kategori == "U":
+                    brg["track"] += "U"
+                else:
+                    if pel.kategori == "R":
+                        brg["track"] += "R"
+                    elif pel.kategori == "P":
+                        brg["track"] += "P"
+                
+                if type(brg["Transit"]) == list:
+                    for i in brg["Transit"]:
+                        brg["track"] += "-P"
+                else:
+                   if brg["Transit"] != "None":
+                        brg["track"] += "-P"
+                
+                if data["port"][brg["Tujuan Pelabuhan"]] == "U":
+                    brg["track"] += "-U"
+                else:
+                    kategori = None
+                    if data["port"][brg["Tujuan Pelabuhan"]] == "R":
+                        brg["track"] += "-R"
+                    elif data["port"][brg["Tujuan Pelabuhan"]] == "P":
+                        brg["track"] += "-P"
+            
+
+    def get_minimum_distance_pel(self, pel, data, kat = "P"):
+        name = None
+        d_min = None
+
+        kategori = None
+        for kategori_cluster in data["Spesial PR"]:
+            if pel in data["Spesial PR"][kategori_cluster]:
+                kategori = kategori_cluster
+                break
+        for pel_peng in [k for k in data["Spesial PR"][kategori] if data["port"][k] == kat]:
+            if ( pel,pel_peng) in self.rute.keys():
+                rute = self.rute[( pel,pel_peng)]
+                
+                d = sum([ geopath.getPathLength(rute[i][0],rute[i][1],rute[i+1][0],rute[i+1][1]) for i in range(len(rute)-1)])
+                
+                if d_min is None:
+                    d_min = d
+                    name = pel_peng
+                if d< d_min:
+                    name = pel_peng
+ 
+            elif ( pel_peng,pel) in self.rute.keys():
+                rute = self.rute[( pel_peng,pel)]
+                d = sum([geopath.getPathLength(rute[i][0],rute[i][1],rute[i+1][0],rute[i+1][1]) for i in range(len(rute)-1)])
+                if d_min is None:
+                    d_min = d
+                if d< d_min:
+                    name = pel_peng
+                d_min = min(d, d_min)
+        return name
+
+
+                    
+
+
+
     def add_transit(self, data):
         for name_pel,pel in self.lis_pelabuhan.items():
             if pel.kategori == "U":
@@ -229,24 +351,38 @@ class JaringanPelabuhan():
         for pel in self.lis_pelabuhan:
               barang = self.lis_pelabuhan[pel].barang
               for n, brg in enumerate(barang):
-                    if brg["Tujuan Pelabuhan"] != brg["Transit"] and brg["Transit"] != "None":
-                          asal = brg["Asal Pelabuhan"]
-                          poss_asal =  [[i["Latitude"], i["Longitude"]] for i in pelabuhan if i["Nama Pelabuhan"] == asal][0]
-                          tujuan = brg["Tujuan Pelabuhan"]
-                          poss_tujuan =  [[i["Latitude"], i["Longitude"]] for i in pelabuhan if i["Nama Pelabuhan"] == tujuan][0]
-                          transit = brg["Transit"]
-                          poss_transit =  [[i["Latitude"], i["Longitude"]] for i in pelabuhan if i["Nama Pelabuhan"] == transit][0]
-                          
-                          cont = data[asal][tujuan]
-                          bobot = brg["Bobot"]
-                          jarak_tran = geopath.getPathLength(poss_asal[0],poss_asal[1],poss_transit[0],poss_transit[1])/1000
-                          jarak_tujuan = geopath.getPathLength(poss_transit[0],poss_transit[1],poss_tujuan[0],poss_tujuan[1])/1000
-                          self.lis_pelabuhan[pel].barang[n]["Biaya"] = cont*bobot*(jarak_tran+jarak_tujuan)
-                          harga +=  cont*bobot*(jarak_tran+jarak_tujuan)
-                          
-                          for n, i in enumerate(data_barang):
-                                if i["code barang"] ==  brg["Kode Barang"]:
-                                      data_barang[n]["Nilai Barang"] = cont*bobot*(jarak_tran+jarak_tujuan)
+                    condition = False
+                    if type(brg["Transit"]) != list:
+                        condition =  brg["Tujuan Pelabuhan"] != brg["Transit"] and brg["Transit"] != "None"
+                    else:
+                        condition =  (brg["Tujuan Pelabuhan"] != brg["Transit"][0] or brg["Tujuan Pelabuhan"] != brg["Transit"][1])  and brg["Transit"] != "None"
+                    
+                    if condition:
+                        asal = brg["Asal Pelabuhan"]
+                        poss_asal =  [[i["Latitude"], i["Longitude"]] for i in pelabuhan if i["Nama Pelabuhan"] == asal][0]
+                        tujuan = brg["Tujuan Pelabuhan"]
+                        poss_tujuan =  [[i["Latitude"], i["Longitude"]] for i in pelabuhan if i["Nama Pelabuhan"] == tujuan][0]
+                        transit = brg["Transit"]
+                        if type(transit) != list:
+                            poss_transit =  [[i["Latitude"], i["Longitude"]] for i in pelabuhan if i["Nama Pelabuhan"] == transit][0]
+                            jarak_tran = geopath.getPathLength(poss_asal[0],poss_asal[1],poss_transit[0],poss_transit[1])/1000
+                        else:
+                            poss_transit =  [[i["Latitude"], i["Longitude"]] for i in pelabuhan if i["Nama Pelabuhan"] == transit[0]][0]
+                            jarak_tran = geopath.getPathLength(poss_asal[0],poss_asal[1],poss_transit[0],poss_transit[1])/1000
+                            poss_transit2 =  [[i["Latitude"], i["Longitude"]] for i in pelabuhan if i["Nama Pelabuhan"] == transit[1]][0]
+                            jarak_tran += geopath.getPathLength(poss_transit[0],poss_transit[1],poss_transit2[0],poss_transit2[1])/1000
+                            jarak_tran += geopath.getPathLength(poss_transit2[0],poss_transit2[1],poss_tujuan[0],poss_tujuan[1])/1000
+
+                        cont = data[asal][tujuan]
+                        bobot = brg["Bobot"]
+                        
+                        jarak_tujuan = geopath.getPathLength(poss_transit[0],poss_transit[1],poss_tujuan[0],poss_tujuan[1])/1000
+                        self.lis_pelabuhan[pel].barang[n]["Biaya"] = cont*bobot*(jarak_tran)
+                        harga +=  cont*bobot*(jarak_tran)
+                        
+                        for n, i in enumerate(data_barang):
+                            if i["code barang"] ==  brg["Kode Barang"]:
+                                data_barang[n]["Nilai Barang"] = cont*bobot*(jarak_tran)
                   
                     else:
                           asal = brg["Asal Pelabuhan"]
@@ -256,7 +392,7 @@ class JaringanPelabuhan():
                           
                           cont = data[asal][tujuan]
                           bobot = brg["Bobot"]
-                          jarak_tran = geopath.getPathLength(poss_asal[0],poss_asal[1],poss_transit[0],poss_transit[1])/1000
+                          jarak_tran = geopath.getPathLength(poss_asal[0],poss_asal[1],poss_tujuan[0],poss_tujuan[1])/1000
                           self.lis_pelabuhan[pel].barang[n]["Biaya"] = cont*bobot*(jarak_tran)
                           harga +=  cont*bobot*(jarak_tran)
 
@@ -266,6 +402,8 @@ class JaringanPelabuhan():
         return harga,data_barang
                           
                          
+    
+    
     def get_rute_barang(self, port, original_port, full_port):
         data_kode_barang = {}
         data_kode_barang["Jarak Jauh"] = {}
@@ -274,20 +412,38 @@ class JaringanPelabuhan():
             for brg in items.barang:
                 asal = brg["Asal Pelabuhan"]
                 transit = brg["Transit"]
-                tujuan = brg["Tujuan Pelabuhan"]
                 
+                if type(transit) != list:
+                    transit = [transit]
+                tujuan = brg["Tujuan Pelabuhan"]
                 if (port[asal] == "U") :
-                    data_kode_barang["Jarak Jauh"][brg["Kode Barang"]] = [asal,transit]
-                    data_kode_barang["Jarak Dekat"][brg["Kode Barang"]] = [transit,tujuan]
+                    data_kode_barang["Jarak Jauh"][brg["Kode Barang"]] = [asal]+transit
+                    data_kode_barang["Jarak Dekat"][brg["Kode Barang"]] = transit+[tujuan]
                     
-                elif(port[tujuan] == "U"):
-                    data_kode_barang["Jarak Jauh"][brg["Kode Barang"]] = [transit,tujuan]
-                    data_kode_barang["Jarak Dekat"][brg["Kode Barang"]] = [asal,transit]
+                elif(port[tujuan] == "U" and port[asal] != "U"):
+                    data_kode_barang["Jarak Jauh"][brg["Kode Barang"]] = transit+[tujuan]
+                    data_kode_barang["Jarak Dekat"][brg["Kode Barang"]] = [asal]+transit
+                
+                elif(port[tujuan] == "P" and port[asal] == "R"):
+                    data_kode_barang["Jarak Jauh"][brg["Kode Barang"]] = transit+[tujuan]
                 else:                    
                     if transit is not "None":
-                        data_kode_barang["Jarak Dekat"][brg["Kode Barang"]] = [asal,transit,tujuan]
+                        data_kode_barang["Jarak Dekat"][brg["Kode Barang"]] = [asal]+transit+[tujuan]
                     else:
                         data_kode_barang["Jarak Dekat"][brg["Kode Barang"]] = [asal,tujuan]
+                # transit_utama = [i for i in transit if port[i] == "P"]
+                transit_utama = []
+                for i in transit:
+                    if i != "None":
+                        if port[i] == "P":
+                            transit_utama.append(i)
+                if transit_utama:
+                    if port[tujuan] == "U":
+                        data_kode_barang["Jarak Jauh"][brg["Kode Barang"]] = transit+[tujuan]
+                    elif port[tujuan] == "P":
+                        data_kode_barang["Jarak Jauh"][brg["Kode Barang"]] = transit+[tujuan]
+                    else:
+                        data_kode_barang["Jarak Jauh"][brg["Kode Barang"]] = transit
         return data_kode_barang
     
     def find_closest(self, data, v):
@@ -533,7 +689,8 @@ class JaringanPelabuhan():
         return data
     
     def loading_barang(self, kapal, pel_singgah, c):
-        delete_list = []                
+        delete_list = [] 
+                      
         for n, brg in enumerate(self.lis_pelabuhan[pel_singgah].barang):
             new_barang = kapal.ambil_barang(brg)
             if new_barang == None:
@@ -565,10 +722,12 @@ class JaringanPelabuhan():
     def checking_posisi(self, kapal):
 #        self.pel_cuaca_tinggi = [i.nama for i in self.lis_pelabuhan.values() if i.is_high]
         self.pel_cuaca_tinggi = []
+        
         barang_kosong = {}
         for kpl in kapal:
             posisi = kpl.before_loc
-            hasil = {name:pel for name, pel in self.lis_pelabuhan.items() if pel.posisi == posisi}
+            posisi = kpl.rute2["nama"].split(" - ")[0]
+            hasil = {name:pel for name, pel in self.lis_pelabuhan.items() if (pel.nama == posisi and kpl.is_singgah) }
             if hasil != {}:
                 pel_singgah = list(hasil.keys())[0]
                 kpl.update_waktu_singgah(pel_singgah)
@@ -579,14 +738,25 @@ class JaringanPelabuhan():
                 kpl.update_kapasitas()
 
                 tujuan = []
+                for i in kpl.barang:
+                    if i["Transit"] == "None":
+                        tujuan += [i["Tujuan Pelabuhan"]] 
+                    else:
+                        if type(i["Transit"]) == list:
+                            trans = i["Transit"][0]
+                            tujuan += trans
+                        else:
+                            trans = i["Transit"]
+                            tujuan += trans
+                        
                 for pel in kpl.rute_name:
                     list_barang = self.lis_pelabuhan[pel].barang
                     list_barang2 = self.lis_pelabuhan[pel].barang_transit.values()
                     
                     if kpl.kategori in ["PR"]:
-                          tujuan += [i["Tujuan Pelabuhan"] for i in list_barang2 if i["Tujuan Pelabuhan"] in kpl.rute_name]
-                          tujuan += [i["Tujuan Pelabuhan"] for i in list_barang if i["Tujuan Pelabuhan"] in kpl.rute_name]
-                          tujuan += [i["Transit"] for i in list_barang if (i["Transit"] in kpl.rute_name and i["Tujuan Pelabuhan"] not in kpl.rute_name) ]
+                        tujuan += [i["Tujuan Pelabuhan"] for i in list_barang if i["Tujuan Pelabuhan"] in kpl.rute_name]
+                        tujuan += [i["Transit"] for i in list_barang if (i["Transit"] in kpl.rute_name and i["Tujuan Pelabuhan"] not in kpl.rute_name) ]
+                        tujuan += [i["Tujuan Pelabuhan"] for i in list_barang2 if i["Tujuan Pelabuhan"] in kpl.rute_name]
                           
 #                          tujuan += [i["Tujuan Pelabuhan"] for i in list_barang2 if (i["Tujuan Pelabuhan"] in kpl.rute_name and i["Tujuan Pelabuhan"]  not in self.pel_cuaca_tinggi)]
 #                          tujuan += [i["Tujuan Pelabuhan"] for i in list_barang if (i["Tujuan Pelabuhan"] in kpl.rute_name and i["Tujuan Pelabuhan"]  not in self.pel_cuaca_tinggi)]
@@ -594,9 +764,11 @@ class JaringanPelabuhan():
 
                     
                     elif kpl.kategori in ["TL", "PL"]:
-                          tujuan += [i["Transit"] for i in list_barang if (i["Transit"] in kpl.rute_name and i["Tujuan Pelabuhan"] not in kpl.rute_name)]
-                          tujuan += [i["Tujuan Pelabuhan"] for i in list_barang2  if i["Tujuan Pelabuhan"] in kpl.rute_name ]
-                
+                        tujuan += [i["Tujuan Pelabuhan"] for i in list_barang if i["Tujuan Pelabuhan"] in kpl.rute_name]
+                        tujuan += [i["Transit"] for i in list_barang if (i["Transit"] in kpl.rute_name and i["Tujuan Pelabuhan"] not in kpl.rute_name)]
+                        tujuan += [i["Tujuan Pelabuhan"] for i in list_barang2  if i["Tujuan Pelabuhan"] in kpl.rute_name ]
+
+                # if list(set(kpl.rute_name).intersection(set(tujuan))) == [] and  (kpl.beban_angkut == 0):
                 if list(set(kpl.rute_name).intersection(set(tujuan))) == [] and  (kpl.beban_angkut == 0):
                       kpl.set_barang_kosong(True)
                 else:
@@ -613,14 +785,89 @@ class JaringanPelabuhan():
                 else:
                     self.lis_pelabuhan[pel_singgah].barang_sampai[brg["Kode Barang"]] = brg
                 a.append(brg["Kode Barang"])
-                    
-            elif (brg["Transit"].lower() ==  pel_singgah.lower() and (brg["Tujuan Pelabuhan"] not in  kapal.rute_name)):
-                delete_index.append(n)
-                if brg["Kode Barang"] in self.lis_pelabuhan[pel_singgah].barang_transit.keys():
-                    self.lis_pelabuhan[pel_singgah].barang_transit[brg["Kode Barang"]]["Bobot"] += brg["Bobot"]
+            
+            elif brg["Transit"] != "None":
+                # print("=======")
+                # print(brg["Transit"], pel_singgah)
+                condition  = False
+                if type(brg["Transit"]) != list:
+                    condition = (brg["Transit"].lower() ==  pel_singgah.lower() and (brg["Tujuan Pelabuhan"] not in  kapal.rute_name))
+                    if  pel_singgah ==  brg["Transit"]:
+                        brg["Transit"] = "None"
                 else:
-                    self.lis_pelabuhan[pel_singgah].barang_transit[brg["Kode Barang"]] = brg
-                a.append(brg["Kode Barang"])
+                    condition = ((brg["Transit"][0].lower() ==  pel_singgah.lower()) and (brg["Tujuan Pelabuhan"] not in  kapal.rute_name))
+                    if pel_singgah == brg["Transit"][0]:
+                        if len(brg["Transit"]) > 1:
+                            brg["Transit"] = [brg["Transit"][1]]
+                        else:
+                            brg["Transit"] = "None"
+
+                # print(brg["Transit"], pel_singgah, condition)
+                if  condition:
+                    delete_index.append(n)
+                    if brg["Kode Barang"] in self.lis_pelabuhan[pel_singgah].barang_transit.keys():
+                        self.lis_pelabuhan[pel_singgah].barang_transit[brg["Kode Barang"]]["Bobot"] += brg["Bobot"]
+                    else:
+                        self.lis_pelabuhan[pel_singgah].barang_transit[brg["Kode Barang"]] = brg
+                    a.append(brg["Kode Barang"])
+
+
+                
+        #     elif len(brg["track"]) == 5 :
+        #         if (brg["Tujuan Pelabuhan"].lower() ==  pel_singgah.lower()):
+        #             delete_index.append(n)
+        #             if brg["Kode Barang"] in self.lis_pelabuhan[pel_singgah].barang_sampai.keys():
+        #                 self.lis_pelabuhan[pel_singgah].barang_sampai[brg["Kode Barang"]]["Bobot"] += brg["Bobot"]                    
+        #             else:
+        #                 self.lis_pelabuhan[pel_singgah].barang_sampai[brg["Kode Barang"]] = brg
+        #             a.append(brg["Kode Barang"])
+
+        #         elif brg["Transit"] != "None":
+        #             condition  = False
+        #             if type(brg["Transit"]) != list:
+        #                 condition = (brg["Transit"].lower() ==  pel_singgah.lower() and (brg["Tujuan Pelabuhan"] not in  kapal.rute_name))
+        #                 if  pel_singgah !=  brg["Asal Pelabuhan"]:
+        #                     brg["Transit"] = "None"
+        #             else:
+        #                 condition = ((brg["Transit"][0].lower() ==  pel_singgah.lower()) and (brg["Tujuan Pelabuhan"] not in  kapal.rute_name))
+                        
+        #                 if pel_singgah == brg["Transit"][0]:
+        #                     if len(brg["Transit"]) > 1:
+        #                         brg["Transit"] = [brg["Transit"][1]]
+        #                     else:
+        #                         brg["Transit"] = "None"
+                    
+        #                 if  condition:
+        #                     delete_index.append(n)
+        #                     if brg["Kode Barang"] in self.lis_pelabuhan[pel_singgah].barang_transit.keys():
+        #                         self.lis_pelabuhan[pel_singgah].barang_transit[brg["Kode Barang"]]["Bobot"] += brg["Bobot"]
+        #                     else:
+        #                         self.lis_pelabuhan[pel_singgah].barang_transit[brg["Kode Barang"]] = brg
+        #                     a.append(brg["Kode Barang"])
+
+        #     else:
+        #         if (brg["Tujuan Pelabuhan"].lower() ==  pel_singgah.lower()):
+        #             delete_index.append(n)
+        #             if brg["Kode Barang"] in self.lis_pelabuhan[pel_singgah].barang_sampai.keys():
+        #                 self.lis_pelabuhan[pel_singgah].barang_sampai[brg["Kode Barang"]]["Bobot"] += brg["Bobot"]                    
+        #             else:
+        #                 self.lis_pelabuhan[pel_singgah].barang_sampai[brg["Kode Barang"]] = brg
+        #             a.append(brg["Kode Barang"])
+
+        #         elif brg["Transit"] != "None":
+        #             condition  = False
+        #             if type(brg["Transit"]) != list:
+        #                 condition = (brg["Transit"].lower() ==  pel_singgah.lower() and (brg["Tujuan Pelabuhan"] not in  kapal.rute_name))
+        #                 if  pel_singgah !=  brg["Asal Pelabuhan"]:
+        #                     brg["Transit"] = "None"
+        #             if  condition:
+        #                     delete_index.append(n)
+        #                     if brg["Kode Barang"] in self.lis_pelabuhan[pel_singgah].barang_transit.keys():
+        #                         self.lis_pelabuhan[pel_singgah].barang_transit[brg["Kode Barang"]]["Bobot"] += brg["Bobot"]
+        #                     else:
+        #                         self.lis_pelabuhan[pel_singgah].barang_transit[brg["Kode Barang"]] = brg
+        #                     a.append(brg["Kode Barang"])
+                
         kapal.barang = [v for i,v in enumerate(kapal.barang) if i not in delete_index]
         return a
   
@@ -781,14 +1028,14 @@ class Kapal():
         
         
         if kategori.lower() == "tl": 
-            self.option = "{color : '#ff0000', radius : 3,fillOpacity:1}"
+            self.option = "{color : '#ff0000', radius : 3,fillOpacity:0.7}"
 
             
         elif kategori.lower() == "pl":
-            self.option = "{color : '#fffb00', radius : 3,fillOpacity:1}"
+            self.option = "{color : '#00ad06', radius : 3,fillOpacity:0.7}"
             
         else:
-            self.option = "{color : '#4400ff', radius : 3,fillOpacity:1}"
+            self.option = "{color : '#000000', radius : 3,fillOpacity:0.7}"
 
             
         self.singgah = 0
@@ -861,12 +1108,15 @@ class Kapal():
               self.marker.setLatLng(self.before_loc )
         
     def add_rute(self,pelabuhan, rute):
-        self.rute_name = rute[1]
+        self.rute_name = [i for i in rute[1] if i != "None"]
+        self.current_port = self.rute_name[0]
         self.rute = pelabuhan.get_full_path(self.speed*1000*self.time_step,rute[1])
         self.full_rute_barang = rute[0]
         
-        self.rute2 = pelabuhan.get_full_path(self.speed*1000*self.time_step,[self.rute_name[0],self.rute_name[1]])[0]
-        self.current_port = self.rute_name[0]
+        if len(self.rute_name) > 1:
+            self.rute2 = pelabuhan.get_full_path(self.speed*1000*self.time_step,[self.rute_name[0],self.rute_name[1]])[0]
+        
+        
         
     def get_rute(self):
         return self.rute_name, self.full_rute_barang
@@ -892,6 +1142,11 @@ class Kapal():
         if self.started:
             self.check_available_port(pelabuhan)
             self.started = False
+            # print(self.nama, self.barang_kosong)
+            # if self.barang_kosong:
+            #     self.count = len(self.rute2["rute"])+1
+            #     print(self.count)
+            #     self.current_port = self.rute_name[0]
             
         if (not self.is_singgah):
 #            if len(self.rute[self.count_rute]["rute"]) >  self.count:
@@ -919,7 +1174,7 @@ class Kapal():
                 self.lama_perjalanan += (self.time_step*60)
             else :
             
-                
+
                 self.count_rute = (self.count_rute+1) % len(self.rute)
                 self.lama_perjalanan += (self.time_step*60)
                 
@@ -930,7 +1185,8 @@ class Kapal():
         elif self.is_singgah:
             
             if self.singgah <= self.waktu_singgah_max*60 or (self.barang_kosong) :
-                if self.barang_kosong and self.beban_angkut == 0:
+                # if self.barang_kosong and self.beban_angkut == 0:
+                if self.barang_kosong :
                     pass
                 else:
                     self.cost += self.cost_function_singgah((self.time_step*60))
@@ -978,7 +1234,14 @@ class Kapal():
         barang = brg.copy()
         barang2 = brg.copy()
         if mode == "No Transit":
-            if (barang["Tujuan Pelabuhan"] in self.rute_name) or (barang["Transit"] in self.rute_name and barang["Tujuan Pelabuhan"] not in self.rute_name) or (barang["Transit"] in self.rute_name and self.kategori in  ["TL","PL"]) :
+            condition = False
+            if type(barang["Transit"]) != list:
+                condition = (barang["Transit"] in self.rute_name and barang["Tujuan Pelabuhan"] not in self.rute_name) or (barang["Tujuan Pelabuhan"] in self.rute_name)
+            else:
+                condition =  (barang["Transit"][0] in self.rute_name and barang["Tujuan Pelabuhan"] not in self.rute_name) or (barang["Tujuan Pelabuhan"] in self.rute_name)
+                
+            # if (barang["Tujuan Pelabuhan"] in self.rute_name) or (condition) or (barang["Transit"] in self.rute_name and self.kategori in  ["TL","PL"]) :
+            if condition:
                 if (self.kapasitas - self.beban_angkut) != 0 :
                     ambil = barang['Bobot'] - (self.kapasitas - self.beban_angkut) 
                     
@@ -990,17 +1253,34 @@ class Kapal():
                         self.barang.append(barang)
                         barang = None
         else:
-            if ( (barang["Tujuan Pelabuhan"] in self.rute_name) ):
+            condition = False
+            if barang["Tujuan Pelabuhan"] in self.rute_name:
                 if (self.kapasitas - self.beban_angkut) != 0 :
                     ambil = barang['Bobot'] - (self.kapasitas - self.beban_angkut)
                     if ambil > 0 :
                         barang2['Bobot'] = (self.kapasitas - self.beban_angkut)
                         self.barang.append(barang2)
                         barang['Bobot'] = barang['Bobot'] - (self.kapasitas - self.beban_angkut) 
-                        
                     else:
                         self.barang.append(barang)
                         barang = None
+            else:
+                if type(barang["Transit"]) != list:
+                    condition = (barang["Transit"] in self.rute_name and barang["Tujuan Pelabuhan"] not in self.rute_name and barang["Asal Pelabuhan"] not in self.rute_name) 
+                else:
+                    condition =  (barang["Transit"][0] in self.rute_name and barang["Tujuan Pelabuhan"] not in self.rute_name and barang["Asal Pelabuhan"] not in self.rute_name) 
+
+                if (condition):
+                    if (self.kapasitas - self.beban_angkut) != 0 :
+                        ambil = barang['Bobot'] - (self.kapasitas - self.beban_angkut)
+                        if ambil > 0 :
+                            barang2['Bobot'] = (self.kapasitas - self.beban_angkut)
+                            self.barang.append(barang2)
+                            barang['Bobot'] = barang['Bobot'] - (self.kapasitas - self.beban_angkut) 
+                            
+                        else:
+                            self.barang.append(barang)
+                            barang = None
 #        self.update_kapasitas()
         self.beban_angkut = sum([i['Bobot'] for i in self.barang])
         if mode != "No Transit":
@@ -1022,57 +1302,71 @@ class Kapal():
             n_port = self.rute_name[index]
             inc += 1
 
-            if self.beban_angkut == self.kapasitas:
-                for brg in self.barang:
-#                    if brg["Tujuan Pelabuhan"] == n_port or  (brg["Transit"] == n_port and self.kategori in ["PL"] ):
-                    if brg["Tujuan Pelabuhan"] == n_port or  (brg["Transit"] == n_port and brg["Asal Pelabuhan"] in self.rute_name and brg["Tujuan Pelabuhan"] not in self.rute_name):
-                        if brg["Bobot"] > 0:
-                            next_trip[1] = (n_port)
-                            self.skip_step = inc
-                            break
-            else :
-                for brg in  pelabuhan.lis_pelabuhan[n_port].barang:
-#                    if brg["Asal Pelabuhan"] == n_port or  (brg["Transit"] == n_port and self.kategori != "PL") or brg["Tujuan Pelabuhan"] == n_port:
-                    if (brg["Asal Pelabuhan"] == n_port and  (brg["Transit"] in self.rute_name) and brg["Tujuan Pelabuhan"] not in self.rute_name) or brg["Tujuan Pelabuhan"] in self.rute_name:
-                        if brg["Bobot"] > 0:
-                            next_trip[1] = (n_port)
-                            self.skip_step = inc
-                            break
-                      
-                for brg in  pelabuhan.lis_pelabuhan[n_port].barang_transit.values():
-                    if (brg["Transit"] == n_port and brg["Tujuan Pelabuhan"] in self.rute_name and brg["Asal Pelabuhan"] not in self.rute_name) :
-                        if brg["Bobot"] > 0:
-                            next_trip[1] = (n_port)
-                            self.skip_step = inc
-                            break
-                      
-                for brg in self.barang:
-#                    if brg["Tujuan Pelabuhan"] == n_port or  (brg["Transit"] == n_port and self.kategori in ["PL"] ):
-                    if brg["Tujuan Pelabuhan"] == n_port or  (brg["Transit"] == n_port and brg["Asal Pelabuhan"] in self.rute_name and brg["Tujuan Pelabuhan"] not in self.rute_name):
-                        if brg["Bobot"] > 0:
-                            next_trip[1] = (n_port)
-                            self.skip_step = inc
-                            break 
-                      
-            if (next_trip[1] !=   self.rute_name[(idx+1) % len(self.rute_name)]):
-                  break
-#            else:
-#                  next_trip[1] = n_port             
-#            if next_trip[1] !=   self.rute_name[(idx+1) % len(self.rute_name)]:
-#                  break
+            if n_port != "None":
+                if self.beban_angkut == self.kapasitas:
+                    for brg in self.barang:
+                    #    if brg["Tujuan Pelabuhan"] == n_port or  (brg["Transit"] == n_port and self.kategori in ["PL"] ):
+                        if brg["Tujuan Pelabuhan"] == n_port or  (brg["Transit"] == n_port and brg["Asal Pelabuhan"] in self.rute_name and brg["Tujuan Pelabuhan"] not in self.rute_name):
+                            if brg["Bobot"] > 0:
+                                next_trip[1] = (n_port)
+                                self.skip_step = inc
+                                break
+                else :
+                    for brg in  pelabuhan.lis_pelabuhan[n_port].barang:
+                        if type(brg["Transit"]) == list:
+                            trans = brg["Transit"][0]
+                        else:
+                            trans = brg["Transit"]
+                            
+                        if (brg["Asal Pelabuhan"] == n_port and  (trans in self.rute_name) and brg["Tujuan Pelabuhan"] not in self.rute_name) or (brg["Tujuan Pelabuhan"] in self.rute_name):
+                            if brg["Bobot"] > 0:
+                                next_trip[1] = (n_port)
+                                self.skip_step = inc
+                                break
                         
-#        if next_trip[0] == next_trip[1]:
-#              self.tunggu= True
-#              next_trip[1] = next_port
-#        else:
-#              self.tunggu= False
+                    for brg in  pelabuhan.lis_pelabuhan[n_port].barang_transit.values():
+                        if (brg["Tujuan Pelabuhan"] in self.rute_name):
+                            if brg["Bobot"] > 0:
+                                next_trip[1] = (n_port)
+                                self.skip_step = inc
+                                break
+                        if type(brg["Transit"]) == list:
+                            trans = brg["Transit"][0]
+                        else:
+                            trans = brg["Transit"]
+
+                        if trans == n_port :
+                            if brg["Bobot"] > 0:
+                                next_trip[1] = (n_port)
+                                self.skip_step = inc
+                                break
+                        
+                    for brg in self.barang:
+                        if brg["Tujuan Pelabuhan"] == n_port:
+                            if brg["Bobot"] > 0:
+                                next_trip[1] = (n_port)
+                                self.skip_step = inc
+                                break 
+                        if brg["Transit"] != "None":
+                            if type(brg["Transit"]) == list:
+                                trans = brg["Transit"][0]
+                            else:
+                                trans = brg["Transit"]
+                            
+                            if trans == n_port:
+                                if brg["Bobot"] > 0:
+                                    next_trip[1] = (n_port)
+                                    self.skip_step = inc
+                                    break 
+                        
+                if (next_trip[1] !=   self.rute_name[(idx+1) % len(self.rute_name)]):
+                    break
                   
         self.rute2 = pelabuhan.get_full_path(self.speed*1000*self.time_step,next_trip)[0]
         self.current_port = next_trip[1]
         
     def set_barang_kosong(self, barang_kosong):
-#          pass
-          self.barang_kosong = barang_kosong
+        self.barang_kosong = barang_kosong
           
         
         

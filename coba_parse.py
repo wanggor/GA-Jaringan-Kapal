@@ -1,15 +1,15 @@
 from utils import preprocessing
 from training import trainer
+from models import logistic_models as ls
 
 
 path = ["data/Data.xlsx", "data/Data Ship.xlsx"]
-# data = preprocessing.parsing_data_2(path)
+data = preprocessing.parsing_data_2(path)
 
-# print(data["Spesial PR"])
+pelabuhan = ls.JaringanPelabuhan()
+pelabuhan.add_multiPelabuhan(data["Daftar Pelabuhan"])
+pelabuhan.add_rute_from_lis(data["Rute"])
+pelabuhan.add_barang(data["Barang"])
+pelabuhan.add_transit_cluster(data)
 
-T = trainer.GA_Trainer(path[0], path[1], 2, 1, 0.01)
-T.initialPopulation(2)
-for i in T.pupulation_kapal[0]:
-    if i.kategori == "PR":
-        pass
-        # print(i.nama, len(i.rute_name), i.rute_name)
+print([i[1].barang for i in pelabuhan.lis_pelabuhan.items()])

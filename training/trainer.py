@@ -24,7 +24,8 @@ class GA_Trainer():
         self.pelabuhan.add_multiPelabuhan(self.data["Daftar Pelabuhan"])
         self.pelabuhan.add_rute_from_lis(self.data["Rute"])
         self.pelabuhan.add_barang(self.data["Barang"])
-        self.pelabuhan.add_transit(self.data)
+        # self.pelabuhan.add_transit(self.data)
+        self.pelabuhan.add_transit_cluster(self.data)
         self.Total_Nilai_Harga, self.data["Barang"] = self.pelabuhan.add_Harga(self.data["Harga Barang"], self.data["Daftar Pelabuhan"], self.data["Barang"])
 
         
@@ -34,14 +35,20 @@ class GA_Trainer():
         for i in range(0, popSize):
             self.pupulation_kapal.append(self.createObjectKapal())
 
-    def choose_route(self,data,  original_port):
-        route = None
+    def choose_route(self,data_barang, data,  original_port):
+        route = [{}, []]
         for i in data.keys():
             if original_port in data[i]:
-                route = data[i]
-                old_index = route.index(original_port)
-                route.insert(0,route.pop(old_index))
+                route[1] = data[i].copy()
+                random.shuffle(route[1])
+                old_index = route[1].index(original_port)
+                route[1].insert(0,route[1].pop(old_index))
                 break
+        
+        for code, val in data_barang.items():
+            if val[0] in route[1]:
+                route[0][code] = val
+
         if route is not None:
             return route
         else:
@@ -52,15 +59,15 @@ class GA_Trainer():
 
         # self.data_kode_barang = self.pelabuhan.get_rute_barang3(self.data["port"],self.original_port, self.data["Daftar Pelabuhan"],obj)
         data_kode_barang = self.pelabuhan.get_rute_barang(self.data["port"],self.original_port, self.data["Daftar Pelabuhan"])
-
         for kpl in obj:
                 original_port = kpl.rute_name[0]
                 if kpl.kategori in ["TL", "PL"]:
                     kpl.add_rute(self.pelabuhan,self.random_route(data_kode_barang["Jarak Jauh"],original_port))
                 else:
-                    # route = self.choose_route(self.data["Spesial PR"], original_port)
-                    # kpl.add_rute(self.pelabuhan,self.random_route(route,original_port))
-                    kpl.add_rute(self.pelabuhan,self.random_route(data_kode_barang["Jarak Dekat"],original_port)) 
+                    route = self.choose_route(data_kode_barang["Jarak Dekat"], self.data["Spesial PR"], original_port)
+                    kpl.add_rute(self.pelabuhan,route)
+                    
+                    # kpl.add_rute(self.pelabuhan,self.random_route(data_kode_barang["Jarak Dekat"],original_port)) 
         return obj
 
     def random_route(self,data,original):
