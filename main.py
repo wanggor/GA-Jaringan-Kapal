@@ -203,10 +203,10 @@ class Main(QMainWindow):
         date = self.ui.dateTimeEdit_2.dateTime()
         awal  = self.data["Wave"][self.wave_count]["Tanggal Awal"]
         akhir = self.data["Wave"][self.wave_count]["Tanggal Akhir"]
-        
-        if awal <= date <= akhir:
+
+        if (date == akhir):
             if self.wave_count < len(self.data["Wave"]):
-                self.wave_count += 1
+                self.wave_count = (self.wave_count+1)
         
         data = []
         if self.wave_count < len(self.data["Wave"]):
@@ -219,10 +219,9 @@ class Main(QMainWindow):
             [self.perubahan_cuaca(name_pel) for name_pel in name_cuaca1]
             [self.perubahan_cuaca(name_pel) for name_pel in name_cuaca2]
             
-        
     def update(self):
         self.check_wave(3)
-        print(self.layer_cuaca.keys())
+
         if self.date is None:
             self.date = self.ui.dateTimeEdit.dateTime()
        
@@ -328,7 +327,6 @@ class Main(QMainWindow):
 
                 for i in self.pelabuhan.lis_pelabuhan:
                     brg = self.pelabuhan.lis_pelabuhan[i].barang
-                    # print(brg)
                 for i in self.object_kapal:
                     pass
                     # print(i.rute_name)
