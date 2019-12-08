@@ -706,13 +706,15 @@ class JaringanPelabuhan():
         #Transit
         delete_list = []                
         for n, kode_barang in enumerate(self.lis_pelabuhan[pel_singgah].barang_transit):
-            new_barang = kapal.ambil_barang(self.lis_pelabuhan[pel_singgah].barang_transit[kode_barang],mode = "Transit")
-            
-            if new_barang == None:
-                delete_list.append(n)
+            if kapal.kategori == "PR" and self.lis_pelabuhan[pel_singgah].barang_transit[kode_barang]["Tujuan Pelabuhan"] in self.pel_cuaca_tinggi:
+                pass
             else:
-                if new_barang["Bobot"] != self.lis_pelabuhan[pel_singgah].barang_transit[kode_barang]["Bobot"]:
-                    self.lis_pelabuhan[pel_singgah].barang_transit[kode_barang]["Bobot"] = new_barang["Bobot"]
+                new_barang = kapal.ambil_barang(self.lis_pelabuhan[pel_singgah].barang_transit[kode_barang],mode = "Transit")
+                if new_barang == None:
+                    delete_list.append(n)
+                else:
+                    if new_barang["Bobot"] != self.lis_pelabuhan[pel_singgah].barang_transit[kode_barang]["Bobot"]:
+                        self.lis_pelabuhan[pel_singgah].barang_transit[kode_barang]["Bobot"] = new_barang["Bobot"]
     
         if delete_list != []:
             a = {kode_barang:self.lis_pelabuhan[pel_singgah].barang_transit[kode_barang] for i,kode_barang in enumerate(self.lis_pelabuhan[pel_singgah].barang_transit) if i not in delete_list}
@@ -720,8 +722,7 @@ class JaringanPelabuhan():
 
     
     def checking_posisi(self, kapal):
-#        self.pel_cuaca_tinggi = [i.nama for i in self.lis_pelabuhan.values() if i.is_high]
-        self.pel_cuaca_tinggi = []
+        self.pel_cuaca_tinggi = [i.nama for i in self.lis_pelabuhan.values() if i.is_high]
         for kpl in kapal:
             posisi = kpl.before_loc
             posisi = kpl.rute2["nama"].split(" - ")[0]
@@ -738,6 +739,9 @@ class JaringanPelabuhan():
 
                 tujuan = []
                 for i in kpl.barang:
+                    for j in kpl.emergency_transit:
+                        tujuan += kpl.emergency_transit[j]
+
                     if i["Transit"] == "None":
                         tujuan += [i["Tujuan Pelabuhan"]] 
                     else:
@@ -800,6 +804,16 @@ class JaringanPelabuhan():
         delete_index = []
         a = []
         for n, brg in enumerate(kapal.barang):
+            if kapal.kategori == "PR":
+                if brg["Tujuan Pelabuhan"] in kapal.emergency_transit.keys():
+                    if pel_singgah == kapal.emergency_transit[brg["Tujuan Pelabuhan"]]:
+                        delete_index.append(n)
+                        if brg["Kode Barang"] in self.lis_pelabuhan[pel_singgah].barang_transit.keys():
+                            self.lis_pelabuhan[pel_singgah].barang_transit[brg["Kode Barang"]]["Bobot"] += brg["Bobot"]                    
+                        else:
+                            self.lis_pelabuhan[pel_singgah].barang_transit[brg["Kode Barang"]] = brg
+                        a.append(brg["Kode Barang"])
+
             if (brg["Tujuan Pelabuhan"].lower() ==  pel_singgah.lower()):
                 delete_index.append(n)
                 if brg["Kode Barang"] in self.lis_pelabuhan[pel_singgah].barang_sampai.keys():
@@ -809,8 +823,6 @@ class JaringanPelabuhan():
                 a.append(brg["Kode Barang"])
             
             elif brg["Transit"] != "None":
-                # print("=======")
-                # print(brg["Transit"], pel_singgah)
                 condition  = False
                 if type(brg["Transit"]) != list:
                     condition = (brg["Transit"].lower() ==  pel_singgah.lower() and (brg["Tujuan Pelabuhan"] not in  kapal.rute_name))
@@ -1017,6 +1029,8 @@ class Kapal():
         self.barang_kosong = False
         
         self.skip_step = 0
+
+        self.emergency_transit = {}
         
         path = 0
         for i in self.rute:
@@ -1339,7 +1353,46 @@ class Kapal():
                         
                 if (next_trip[1] !=   self.rute_name[(idx+1) % len(self.rute_name)]):
                     break
-                  
+
+        if self.kategori == "PR":
+            min_d = None
+            next_emergency = None
+            if next_trip[1] in pelabuhan.pel_cuaca_tinggi:
+                idx = self.rute_name.index(next_trip[1])
+                if self.beban_angkut == self.kapasitas:
+                    for i in range(len(self.rute_name)):
+                        emergenc_port = self.rute_name[(idx+1+i) % len(self.rute_name)]
+                        if pelabuhan.lis_pelabuhan[emergenc_port].kategori == "P":
+                            rute = pelabuhan.rute[(next_trip[1],emergenc_port)]
+                            d = sum([ geopath.getPathLength(rute[i][0],rute[i][1],rute[i+1][0],rute[i+1][1]) for i in range(len(rute)-1)])
+                            if min_d == None:
+                                min_d = d
+                                next_emergency = emergenc_port
+                            elif min_d > d:
+                                next_emergency = emergenc_port
+                                min_d = d
+                    self.emergency_transit[ next_trip[1]] = next_emergency
+                    next_trip[1] = next_emergency
+                else:
+                    if self.rute_name[(idx+1) % len(self.rute_name)] not in pelabuhan.pel_cuaca_tinggi:
+                        a = self.rute_name[(idx+1) % len(self.rute_name)]
+                        if pelabuhan.lis_pelabuhan[a].barang or pelabuhan.lis_pelabuhan[a].barang_transit:
+                            next_trip[1] = a
+                        else:
+                            for i in range(len(self.rute_name)):
+                                emergenc_port = self.rute_name[(idx+1+i) % len(self.rute_name)]
+                                if pelabuhan.lis_pelabuhan[emergenc_port].kategori == "P":
+                                    rute = pelabuhan.rute[(next_trip[1],emergenc_port)]
+                                    d = sum([ geopath.getPathLength(rute[i][0],rute[i][1],rute[i+1][0],rute[i+1][1]) for i in range(len(rute)-1)])
+                                    if min_d == None:
+                                        min_d = d
+                                        next_emergency = emergenc_port
+                                    elif min_d > d:
+                                        next_emergency = emergenc_port
+                                        min_d = d
+                            self.emergency_transit[ next_trip[1]] = next_emergency
+                            next_trip[1] = next_emergency
+
         self.rute2 = pelabuhan.get_full_path(self.speed*1000*self.time_step,next_trip)[0]
         self.current_port = next_trip[1]
         
