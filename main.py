@@ -367,7 +367,6 @@ class Main(QMainWindow):
                 self.train_thread.stop()
                 self.ui.pushButton_training.setText("Mulai Training")
                 del self.train_thread
-            
             event.accept()
         else:
             event.ignore()
