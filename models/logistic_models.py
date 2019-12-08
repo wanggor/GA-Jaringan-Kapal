@@ -1273,7 +1273,12 @@ class Kapal():
                         else:
                             trans = brg["Transit"]
 
-                        if brg["Tujuan Pelabuhan"] == n_port or  (trans == n_port and brg["Asal Pelabuhan"] in self.rute_name and brg["Tujuan Pelabuhan"] not in self.rute_name):
+                        if brg["Tujuan Pelabuhan"] == n_port or  (trans == n_port and brg["Asal Pelabuhan"] in self.rute_name and brg["Tujuan Pelabuhan"] not in self.rute_name and self.kategori == "PR"):
+                            if brg["Bobot"] > 0:
+                                next_trip[1] = (n_port)
+                                self.skip_step = inc
+                                break
+                        if (trans == n_port and  self.kategori != "PR"  and brg["Tujuan Pelabuhan"] not in self.rute_name):
                             if brg["Bobot"] > 0:
                                 next_trip[1] = (n_port)
                                 self.skip_step = inc
