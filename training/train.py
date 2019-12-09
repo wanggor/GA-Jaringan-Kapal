@@ -39,15 +39,18 @@ class Train(QThread):
             data = {}
             data["y"] = remaining_history
             data["msg"] = f"{i} |  cost : {cost}"
-        
             self.data.emit(data)
-            
+        self.send_kapal()
+        self.save()
+        
+    def send_kapal(self):
         data  = {}
         best_route = self.trainer.extract_best_route()
         data["Kapal"] = best_route
         self.data.emit(data)
-        
-
+    
+    def save(self):
+        self.trainer.save()
             
     def stop(self):
         self.kill = True

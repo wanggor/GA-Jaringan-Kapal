@@ -14,6 +14,7 @@ import sys
 
 from os import listdir
 from os.path import isfile, join, exists
+import os
 
 from models import logistic_models as ls
 from utils import preprocessing as pr, widget_utils as wu
@@ -21,7 +22,8 @@ from gui import plotWidget
 from training import train
 from utils.color_picker import MplColorHelper
 
-import random 
+import random
+import pickle
 
 def random_route(data,original, port_list):
     output = [original]
@@ -60,20 +62,22 @@ class Main(QMainWindow):
         self.ui.listWidget.scrollToBottom()
         self.ui.widget_3.hide()
         self.ui.pushButton_download.hide()
-        # self.ui.frame_4.hide()
+        self.ui.frame_4.hide()
         self.ui.listWidget_rute.hide()
         self.ui.pushButton_reset.hide()
 
         self.ui.dateTimeEdit.setEnabled(False)
         self.ui.dateTimeEdit_2.setEnabled(False)
 
-        self.ui.pushButton_pilih.clicked.connect(self.file_dialog)
+        self.ui.pushButton_load.clicked.connect(self.file_dialog)
         self.ui.pushButton_start_simulasi.clicked.connect(self.start_simulation)
         self.ui.pushButton_training.clicked.connect(self.start_training)
         self.ui.pushButton_save.clicked.connect(self.save)
 #        self.ui.pushButton_download.clicked.connect(self.download)
         self.ui.pushButton_cuaca.clicked.connect(self.perubahan_cuaca)
         self.ui.pushButton_reset.clicked.connect(self.reset)
+
+        self.tabWidget.removeTab(1)
         
         self.ui.pushButton_Initialize.clicked.connect(self.initialize_training)
         
@@ -93,7 +97,6 @@ class Main(QMainWindow):
         self.timer1.timeout.connect(self.update)
         
         self.layer_cuaca = {}
-        
         self.wave_count = 0
         self.data_wave = []
 
@@ -152,7 +155,6 @@ class Main(QMainWindow):
             self.pushButton_training.setEnabled(True)
                 
         if "Kapal" in data.keys():
-            # object_kapal = data["Kapal"]
             self.object_kapal = data["Kapal"]
             
             for kpl in self.object_kapal:
@@ -175,25 +177,26 @@ class Main(QMainWindow):
 
                 self.ui.dateTimeEdit.setDateTime(self.data["Wave"][0]["Tanggal Awal"])
                 self.ui.dateTimeEdit_2.setDateTime(self.data["Wave"][0]["Tanggal Awal"])
-
-                # self.object_kapal.append(ls.Kapal(self.pelabuhan, kpl.nama, kpl.kategori, kpl.kapasitas, kpl.rute_name, kpl.speed,kpl.data))
-                # self.object_kapal[-1].add_rute(self.pelabuhan, [kpl.full_rute_barang, kpl.rute_name])
-
             
-            [i.reset(self.pelabuhan) for i in self.object_kapal]
-            [i.draw(self.map) for i in self.object_kapal]
-            
-            wu.add_table_kapal(self.ui.tableWidget_kapal,self.object_kapal)
-            wu.add_table_pelabuhan(self.ui.tableWidget_pelabuhan, self.pelabuhan.get_barang())
-            
-            self.ui.pushButton_Initialize.setEnabled(True)
-            self.pushButton_training.setEnabled(False)
-            self.ui.pushButton_training.setText("Mulai Training")
+            self.create_pelabuhan()
+            self.create_simulation()
             
             del self.train_thread
             self.train_thread = None
+   
+    def create_simulation(self):
+
+        # [i.reset(self.pelabuhan) for i in self.object_kapal]
+        [i.draw(self.map) for i in self.object_kapal]
         
+        wu.add_table_kapal(self.ui.tableWidget_kapal,self.object_kapal)
+        wu.add_table_pelabuhan(self.ui.tableWidget_pelabuhan, self.pelabuhan.get_barang())
         
+        self.ui.pushButton_Initialize.setEnabled(True)
+        self.pushButton_training.setEnabled(False)
+        self.ui.pushButton_training.setText("Mulai Training")
+
+    
     def start_simulation(self):
         if self.timer1.isActive():
             self.timer1.stop()
@@ -251,11 +254,9 @@ class Main(QMainWindow):
             wu.update_table_barang(self.ui.tableWidget_2,self.pelabuhan.get_barang_sampai())
             
     def reset(self):
-        [self.pelabuhan.lis_pelabuhan[i].reset() for i in self.pelabuhan.lis_pelabuhan]
-        rute = [(i.full_rute_barang, i.rute_name) for i in self.object_kapal]
-        self.object_kapal = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"], kpl["rute"], kpl["speed"],kpl) for kpl in self.data["Kapal"]]
-        for kpl in self.object_kapal:
-            kpl.add_rute(self.pelabuhan, rute)
+        self.map.c
+        self.create_pelabuhan()
+        self.create_simulation()
         
         self.ui.tableWidget_kapal.clear()
         self.ui.tableWidget_pelabuhan.clear()
@@ -264,66 +265,65 @@ class Main(QMainWindow):
         self.pelabuhan.add_transit(self.data)
         self.ui.dateTimeEdit.setDateTime(self.data["Wave"][0]["Tanggal Awal"])
         self.ui.dateTimeEdit_2.setDateTime(self.data["Wave"][0]["Tanggal Awal"])
+
+        self.layer_cuaca = {}
+        self.wave_count = 0
+        self.data_wave = []
+
+        self.picker = MplColorHelper("jet", 0,8)
+        self.n = 0
         
             
     def file_dialog(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         options |= QFileDialog.ShowDirsOnly
-        fileName = QFileDialog.getExistingDirectory(self, options=options)
-        if fileName:
-            self.path = [join(fileName, "Data.xlsx"), join(fileName, 'Data Ship.xlsx')]
-            
-            if exists(self.path[0]) and exists(self.path[1]):
-            
-                self.data = pr.parsing_data_2(self.path)
-                [self.ui.comboBox_pelabuhan.addItem(i) for i in sorted([ i for i in self.data['port'] if self.data['port'][i] == "R"])]
-    
-                wu.add_table_barang(self.ui.tableWidget_2,self.data["Barang"])
-                
-                wu.priview_data(
-                         self.ui.pushButton_pilih,
-                         self.ui.label_pel_utama,
-                         self.ui.label_pel_pengumpul,
-                         self.ui.label_pel_pengumpan,
-                         fileName,
-                         self.data["Daftar Pelabuhan"])
-                
-                self.pelabuhan.add_multiPelabuhan(self.data["Daftar Pelabuhan"])
-                self.pelabuhan.add_rute_from_lis(self.data["Rute"])
-                
-                self.pelabuhan.add_barang(self.data["Barang"])
-                self.pelabuhan.add_transit_cluster(self.data)
-                self.Total_Nilai_Harga, self.data["Barang"] = self.pelabuhan.add_Harga(self.data["Harga Barang"], self.data["Daftar Pelabuhan"], self.data["Barang"])
-                self.pelabuhan.draw(self.map, False, self.data["Spesial PR"], self.picker)
-                
-                wu.add_table(self.ui.tableWidget,self.data["Barang"])
-                
-                self.ui.dateTimeEdit.setDateTime(self.data["Wave"][0]["Tanggal Awal"])
-                self.ui.dateTimeEdit_2.setDateTime(self.data["Wave"][0]["Tanggal Awal"])
-                
-                # self.object_kapal = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"], kpl["rute"], kpl["speed"],kpl) for kpl in self.data["Kapal"]]
-                # [i.draw(self.map) for i in self.object_kapal]
-                
-                # original_port = { i["nama"]: [i["kategori"],i["rute"][0]]for i in self.data["Kapal"]}
-    
-                # data_kode_barang = self.pelabuhan.get_rute_barang(self.data["port"],original_port, self.data["Daftar Pelabuhan"])
-                # #    data_kode_barang = self.pelabuhan.get_rute_barang2(self.data["port"],original_port, self.data["Daftar Pelabuhan"])
-                # for kpl in self.object_kapal:
-                #     original_port = kpl.rute_name[0]
-                #     if kpl.kategori in ["TL", "PL"]:
-                #         kpl.add_rute(self.pelabuhan,random_route(data_kode_barang["Jarak Jauh"],original_port, self.data["port"]))
-                #     else:
-                #         #    kpl.add_rute(self.pelabuhan,random_route(data_kode_barang["Jarak Dekat"],original_port))
-                #         #    kpl.add_rute(self.pelabuhan,random_route(data_kode_barang["Jarak Dekat"][kpl.nama],original_port))
-                #         route = self.choose_route(data_kode_barang["Jarak Dekat"], self.data["Spesial PR"], original_port)
-                #         kpl.add_rute(self.pelabuhan,route)
-                                    
-                # wu.add_table_kapal(self.ui.tableWidget_kapal,self.object_kapal)
-                # wu.add_table_pelabuhan(self.ui.tableWidget_pelabuhan, self.pelabuhan.get_barang())
+        self.fileName = QFileDialog.getExistingDirectory(self, options=options)
+        if self.fileName:
+            # self.path = [join(self.fileName, "Data.xlsx"), join(self.fileName, 'Data Ship.xlsx')]
+            # if exists(self.path[0]) and exists(self.path[1]):
+            #     self.data = pr.parsing_data_2(self.path)
+            #     self.create_pelabuhan()
+            for subdir, dirs, files in os.walk(self.fileName):
+                for file in files:
+                    filepath = subdir + os.sep + file
+                    if filepath.endswith(".pickle"):
+                        if (filepath.split("_")[-1]) == "data.pickle":
+                            file = open(filepath, 'rb')
+                            self.data = pickle.load(file)
+                            file.close()
+                            self.create_pelabuhan()
+                        elif (filepath.split("_")[-1]) == "ship.pickle":
+                            file = open(filepath, 'rb')
+                            self.object_kapal = pickle.load(file)
+                            file.close()
+                            self.create_simulation()
+
         
-            else:
-                reply = QMessageBox.warning(self, 'File Not Found', 'Looking for "Data.xlsx" & "Data Ship.xlsx"',  QMessageBox.Ok)
+            # else:
+            #     reply = QMessageBox.warning(self, 'File Not Found', 'Looking for "Data.xlsx" & "Data Ship.xlsx"',  QMessageBox.Ok)
+
+    def create_pelabuhan(self):
+        self.pelabuhan = ls.JaringanPelabuhan()
+        [self.ui.comboBox_pelabuhan.addItem(i) for i in sorted([ i for i in self.data['port'] if self.data['port'][i] == "R"])]
+        wu.add_table_barang(self.ui.tableWidget_2,self.data["Barang"])
+        wu.priview_data(
+                    self.ui.pushButton_pilih,
+                    self.ui.label_pel_utama,
+                    self.ui.label_pel_pengumpul,
+                    self.ui.label_pel_pengumpan,
+                    self.fileName,
+                    self.data["Daftar Pelabuhan"])
+        
+        self.pelabuhan.add_multiPelabuhan(self.data["Daftar Pelabuhan"])
+        self.pelabuhan.add_rute_from_lis(self.data["Rute"])
+        
+        self.pelabuhan.add_barang(self.data["Barang"])
+        self.pelabuhan.add_transit_cluster(self.data)
+        self.Total_Nilai_Harga, self.data["Barang"] = self.pelabuhan.add_Harga(self.data["Harga Barang"], self.data["Daftar Pelabuhan"], self.data["Barang"])
+        self.pelabuhan.draw(self.map, False, self.data["Spesial PR"], self.picker)
+        
+        wu.add_table(self.ui.tableWidget,self.data["Barang"])
 
     def choose_route(self,data_barang, data,  original_port):
         route = [{}, []]

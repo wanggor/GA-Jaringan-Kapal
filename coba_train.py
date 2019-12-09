@@ -1,18 +1,14 @@
 from training import train
+popSize = 4
+elitsize = 2
+mutation = 0
+generation = 2
 
-data = {}
-data["path"] = ["data/Data.xlsx", "data/Data Ship.xlsx"]
-data['popSize'],data['eliteSize'],data['Mutation Rate'] = 3, 1, 0.007
+path = ["data/Data.xlsx", "data/Data Ship.xlsx"]
 
-trainer = train.GA_Trainer(data["path"][0], data["path"][1],3,2,0.1)
+trainer = train.GA_Trainer(path[0], path[1],popSize,elitsize,mutation)
+trainer.initialPopulation(popSize)
 
-trainer.initialPopulation(3)
-
-for i in range(3):
+for i in range(generation):
     cost = trainer.nextGeneration()
-    print("************")
-    print(cost)
-    print("************")
-
-print("####################")
-trainer.check_best_result()
+trainer.save()

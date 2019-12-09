@@ -6,6 +6,8 @@ import pandas as pd
 import numpy as np
 import datetime
 import progressbar
+import pickle
+import os
 
 class GA_Trainer():
     def __init__(self, path_data, path_ship, popSize, eliteSize, mutationRate, timestep = 0.1, draw = False):
@@ -22,6 +24,9 @@ class GA_Trainer():
         self.p = 0
         self.max_itter = None
 
+        self.data_output = ""
+        self.itteration = 0
+
     def createPelabuhan(self):
         self.pelabuhan = ls.JaringanPelabuhan()
         self.pelabuhan.add_multiPelabuhan(self.data["Daftar Pelabuhan"])
@@ -36,7 +41,10 @@ class GA_Trainer():
         for i in range(0, popSize):
             self.pupulation_kapal.append(self.createObjectKapal())
 
+        print("\n\n")
+        print("Train Initialization ........")
         self.rankRoutes()
+        print("\nInitialization Complete")
 
     def choose_route(self,data_barang, data,  original_port):
         route = [{}, []]
@@ -120,12 +128,13 @@ class GA_Trainer():
         n = 0
         sisa = 1
         self.wave_count = 0
-        [i.reset(self.pelabuhan) for i in self.pupulation_kapal[index]]
+        # [i.reset(self.pelabuhan) for i in self.pupulation_kapal[index]]
         self.date = self.data["Wave"][0]["Tanggal Awal"]
         self.data_wave = []
         self.layer_cuaca = {}
         total = sum([float(i["Bobot"]) for i in self.data["Barang"]])
-        bar = progressbar.ProgressBar(total, [progressbar.Bar("="),"",progressbar.Percentage()])
+        widgets = [progressbar.FormatLabel(''),progressbar.Bar("="),"",progressbar.Percentage(), progressbar.FormatLabel(''),progressbar.FormatLabel('')]
+        bar = progressbar.ProgressBar(total, widgets)
         bar.start()
         while True:
             n += 1
@@ -140,8 +149,12 @@ class GA_Trainer():
             revenue = sum([ float(i["Bobot"]) for i in self.pelabuhan.get_barang_sampai()])
             beban_kapal = sum([ float(i.beban_angkut) for i in self.pupulation_kapal[index]])
             transit = sum([ float(i["Total"]) for i in self.pelabuhan.get_barang_transit()])
-
+            
+            widgets[0] = progressbar.FormatLabel(f"{(index+1)}/{len(self.pupulation_kapal)} ")
+            widgets[-2] = progressbar.FormatLabel(f" | Itter : {n} ")
+            widgets[-1] = progressbar.FormatLabel(f" | Cost : {cost} ")
             bar.update(revenue)
+            
             if self.draw:
                 print(f"""
                       ================
@@ -156,7 +169,6 @@ class GA_Trainer():
                       """)
             if self.max_itter is not None:
                 if  n > self.max_itter*3 : 
-                    cost = float("inf")
                     break
             if (beban_kapal <= 0) and (sisa <= 0) and (transit <= 0):
                 break
@@ -201,16 +213,15 @@ class GA_Trainer():
         
         for i in range(0,eliteSize):
             obj = []
-            # obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"], kpl["rute"], kpl["speed"],kpl,self.timestep) for kpl in self.data["Kapal"]]
+            obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"], kpl["rute"], kpl["speed"],kpl,self.timestep) for kpl in self.data["Kapal"]]
             for n,m in enumerate(self.matingpool[i]):
-                # rute_name = m.rute_name
-                # barg = m.full_rute_barang
-                # obj[n].add_rute(self.pelabuhan, (barg, rute_name))
-                obj.append(m)
+                rute_name = m.rute_name
+                barg = m.full_rute_barang
+                obj[n].add_rute(self.pelabuhan, (barg, rute_name))
+                # obj.append(m)
             children.append(obj)
             
         self.pool = random.sample(self.matingpool, len(self.matingpool))
-
         for i in range(0, length):
             child = self.pelabuhan.breed2(self.pool[i], self.pool[len(self.matingpool)-i-1])
             obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"], kpl["rute"], kpl["speed"],kpl,self.timestep) for kpl in self.data["Kapal"]]
@@ -239,17 +250,76 @@ class GA_Trainer():
                 self.mutate(self.pupulation_kapal[ind], mutationRate)
 
     def nextGeneration(self):
-        self.selection(self.eliteSize)#eliteSize
+        self.itteration += 1
+        print(f"\nGeneration : {self.itteration}")
+        self.selection(self.eliteSize)
         self.matingPool()
         self.breedPopulation(self.eliteSize)
         self.mutatePopulation(self.mutationRate)
         self.rankRoutes()
+        print(f"Best Route : {self.fitnessResults[0][0]+1} | Cost : {self.fitnessResults[0][1]}")
+
+        self.data_output += (f"{len(self.data_output)}\t{self.fitnessResults[0][1]}\n")
+        
         return self.fitnessResults[0][1]
 
     def extract_best_route(self):
-        bestRouteIndex =self.fitnessResults[0][0]
-        bestRoute = self.pupulation_kapal[bestRouteIndex]
-        return bestRoute
+        index = self.fitnessResults[0][0]
+        obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"], kpl["rute"], kpl["speed"],kpl,self.timestep) for kpl in self.data["Kapal"]]
+        for n,m in enumerate(self.pupulation_kapal[index]):
+            rute_name = m.rute_name
+            barg = m.full_rute_barang
+            obj[n].add_rute(self.pelabuhan, (barg, rute_name))
+        # self.pupulation_kapal[index] = obj
+        return obj
 
+    def save(self):
+        print("\nSaving Training Data ....")
+        file_dir = "output"
+        file_name = "model_"+ datetime.datetime.now().strftime('%d-%m-%y_%H-%M')
+        file_dir = os.path.join(file_dir, file_name)
+        if not os.path.exists(file_dir):
+            os.makedirs(file_dir)
+        
+        file_pickle = os.path.join(file_dir, file_name+"_ship.pickle")
+        pickle_out = open(file_pickle,"wb")
+        pickle.dump(self.extract_best_route(), pickle_out)
+        pickle_out.close()
+
+        file_pickle = os.path.join(file_dir, file_name+"_data.pickle")
+        pickle_out = open(file_pickle,"wb")
+        pickle.dump(self.data, pickle_out)
+        pickle_out.close()
+
+        file_pickle = os.path.join(file_dir, "log cost.txt")
+        f = open(file_pickle,"w") 
+        f.write(self.data_output)
+        f.close()
+
+        file_pickle = os.path.join(file_dir, "list nama rute.txt")
+        with open(file_pickle, "w") as f:
+            text = ""
+            for n,i in enumerate(self.pupulation_kapal[self.fitnessResults[0][0]]):
+                text += f"{n+1}. {i.nama.upper()} : "
+                for j in i.rute_name:
+                    text += f"{j}, "
+                text += "\n"
+            f.write(text)
+        
+        file_pickle = os.path.join(file_dir, "Parameter.txt")
+        with open(file_pickle, "w") as f:
+            text = f"====================================================\n\nPop Size = {self.popSize}\nMutation Rate = {self.mutationRate}\nElite Size = {self.eliteSize}\nGeneration = {self.itteration}\n\n===================================================="
+            f.write(text)
+
+        print("\nSaving Training Complete")
     def check_best_result(self):
-        self.getFitness(self.fitnessResults[0][0])
+        index = self.fitnessResults[0][0]
+
+        obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"], kpl["rute"], kpl["speed"],kpl,self.timestep) for kpl in self.data["Kapal"]]
+        for n,m in enumerate(self.pupulation_kapal[index]):
+            rute_name = m.rute_name
+            barg = m.full_rute_barang
+            obj[n].add_rute(self.pelabuhan, (barg, rute_name))
+        
+        self.pupulation_kapal[index] = obj
+        self.getFitness(index)
