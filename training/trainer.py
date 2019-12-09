@@ -24,7 +24,7 @@ class GA_Trainer():
         self.p = 0
         self.max_itter = None
 
-        self.data_output = ""
+        self.data_output = "Generation\tRoute\tItteration\tCost\n"
         self.itteration = 0
 
     def createPelabuhan(self):
@@ -123,7 +123,7 @@ class GA_Trainer():
             if name_pel in self.layer_cuaca.keys():
                 del self.layer_cuaca[name_pel]
 
-    def getFitness(self, index):
+    def getFitness(self, index, mode = "no Test"):
         self.createPelabuhan()
         n = 0
         sisa = 1
@@ -177,6 +177,8 @@ class GA_Trainer():
         else:
             self.max_itter = n
         bar.finish()
+        if mode == "no Test":
+            self.data_output += f"{self.itteration}\t{index+1}\t{n}\t{cost}\n"
         return (cost)
     
     def rankRoutes(self):
@@ -259,7 +261,7 @@ class GA_Trainer():
         self.rankRoutes()
         print(f"Best Route : {self.fitnessResults[0][0]+1} | Cost : {self.fitnessResults[0][1]}")
 
-        self.data_output += (f"{len(self.data_output)}\t{self.fitnessResults[0][1]}\n")
+        self.data_output += f"{self.itteration}\t{self.fitnessResults[0][0]+1}\t\t{self.fitnessResults[0][1]}\n"
         
         return self.fitnessResults[0][1]
 
@@ -291,7 +293,7 @@ class GA_Trainer():
         pickle.dump(self.data, pickle_out)
         pickle_out.close()
 
-        file_pickle = os.path.join(file_dir, "log cost.txt")
+        file_pickle = os.path.join(file_dir, "log cost.csv")
         f = open(file_pickle,"w") 
         f.write(self.data_output)
         f.close()
@@ -308,7 +310,7 @@ class GA_Trainer():
         
         file_pickle = os.path.join(file_dir, "Parameter.txt")
         with open(file_pickle, "w") as f:
-            text = f"====================================================\n\nPop Size = {self.popSize}\nMutation Rate = {self.mutationRate}\nElite Size = {self.eliteSize}\nGeneration = {self.itteration}\n\n===================================================="
+            text = f"====================================================\n\nPop Size = {self.popSize}\nMutation Rate = {self.mutationRate}\nElite Size = {self.eliteSize}\nGeneration = {self.itteration}\nTime Step = {self.timestep} Jam\n\n===================================================="
             f.write(text)
 
         print("\nSaving Training Complete")
@@ -322,4 +324,5 @@ class GA_Trainer():
             obj[n].add_rute(self.pelabuhan, (barg, rute_name))
         
         self.pupulation_kapal[index] = obj
-        self.getFitness(index)
+        print("\nTest Overal Best Route")
+        self.getFitness(index, mode="test")

@@ -185,6 +185,12 @@ class Main(QMainWindow):
             self.train_thread = None
    
     def create_simulation(self):
+        obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"], kpl["rute"], kpl["speed"],kpl) for kpl in self.data["Kapal"]]
+        for n,m in enumerate(self.object_kapal):
+            rute_name = m.rute_name
+            barg = m.full_rute_barang
+            obj[n].add_rute(self.pelabuhan, (barg, rute_name))
+        self.object_kapal = obj
 
         # [i.reset(self.pelabuhan) for i in self.object_kapal]
         [i.draw(self.map) for i in self.object_kapal]
