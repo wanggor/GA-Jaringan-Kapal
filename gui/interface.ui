@@ -70,7 +70,7 @@
           <bool>true</bool>
          </property>
          <property name="currentIndex">
-          <number>2</number>
+          <number>0</number>
          </property>
          <widget class="QWidget" name="tab_2">
           <attribute name="title">
@@ -618,6 +618,9 @@
                  </item>
                  <item>
                   <widget class="QDateTimeEdit" name="dateTimeEdit">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
                    <property name="date">
                     <date>
                      <year>2019</year>
@@ -645,7 +648,7 @@
                    <item>
                     <widget class="QDateTimeEdit" name="dateTimeEdit_2">
                      <property name="enabled">
-                      <bool>true</bool>
+                      <bool>false</bool>
                      </property>
                      <property name="readOnly">
                       <bool>true</bool>
@@ -660,33 +663,6 @@
                     </widget>
                    </item>
                   </layout>
-                 </item>
-                </layout>
-               </item>
-               <item>
-                <layout class="QHBoxLayout" name="horizontalLayout_8">
-                 <item>
-                  <widget class="QLabel" name="label_11">
-                   <property name="sizePolicy">
-                    <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-                     <horstretch>0</horstretch>
-                     <verstretch>0</verstretch>
-                    </sizepolicy>
-                   </property>
-                   <property name="text">
-                    <string>Simulation Speed :</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QSpinBox" name="spinBox">
-                   <property name="minimum">
-                    <number>1</number>
-                   </property>
-                   <property name="maximum">
-                    <number>10</number>
-                   </property>
-                  </widget>
                  </item>
                 </layout>
                </item>

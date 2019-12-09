@@ -63,9 +63,10 @@ class Main(QMainWindow):
         # self.ui.frame_4.hide()
         self.ui.listWidget_rute.hide()
         self.ui.pushButton_reset.hide()
-        self.ui.spinBox.hide()
-        self.ui.label_11.hide()
-        
+
+        self.ui.dateTimeEdit.setEnabled(False)
+        self.ui.dateTimeEdit_2.setEnabled(False)
+
         self.ui.pushButton_pilih.clicked.connect(self.file_dialog)
         self.ui.pushButton_start_simulasi.clicked.connect(self.start_simulation)
         self.ui.pushButton_training.clicked.connect(self.start_training)
@@ -97,6 +98,7 @@ class Main(QMainWindow):
         self.data_wave = []
 
         self.picker = MplColorHelper("jet", 0,8)
+        self.n = 0
         
     def perubahan_cuaca(self, name_pel):
         # name_pel = self.ui.comboBox_pelabuhan.currentText()
@@ -104,12 +106,12 @@ class Main(QMainWindow):
         posisi = obj.posisi
         obj.is_high = not obj.is_high
         if obj.is_high:
-              options= "{color : '#fc9d03', radius: 20, fillOpacity:0.2}"
-              self.layer_cuaca[name_pel] = L.circleMarker(posisi,options= options)
-              self.layer_cuaca[name_pel].bindTooltip(name_pel.capitalize())
-              self.map.addLayer(self.layer_cuaca[name_pel])
+            options= "{color : '#fc9d03', radius: 20, fillOpacity:0.2}"
+            self.layer_cuaca[name_pel] = L.circleMarker(posisi,options= options)
+            self.layer_cuaca[name_pel].bindTooltip(name_pel.capitalize())
+            self.map.addLayer(self.layer_cuaca[name_pel])
         else:
-               self.map.removeLayer(self.layer_cuaca[name_pel])
+            self.map.removeLayer(self.layer_cuaca[name_pel])
                 
     
     def initialize_training(self):
@@ -148,10 +150,9 @@ class Main(QMainWindow):
             self.ui.plot.update(data)
             self.ui.listWidget.addItem(str(data["msg"]))
             self.pushButton_training.setEnabled(True)
-#            if (self.ui.listWidget.count()) > 9:
-#                self.ui.listWidget.takeItem(0)
                 
         if "Kapal" in data.keys():
+            # object_kapal = data["Kapal"]
             self.object_kapal = data["Kapal"]
             
             for kpl in self.object_kapal:
@@ -169,13 +170,19 @@ class Main(QMainWindow):
                         text += f"{i} => "
                 self.ui.listWidget.addItem(list_item)
                 self.ui.listWidget.setItemWidget(list_item, separator)
-                
                 self.ui.listWidget.addItem(text)
-                
                 self.ui.pushButton_start_simulasi.setEnabled(True)
+
+                self.ui.dateTimeEdit.setDateTime(self.data["Wave"][0]["Tanggal Awal"])
+                self.ui.dateTimeEdit_2.setDateTime(self.data["Wave"][0]["Tanggal Awal"])
+
+                # self.object_kapal.append(ls.Kapal(self.pelabuhan, kpl.nama, kpl.kategori, kpl.kapasitas, kpl.rute_name, kpl.speed,kpl.data))
+                # self.object_kapal[-1].add_rute(self.pelabuhan, [kpl.full_rute_barang, kpl.rute_name])
+
             
-            
+            [i.reset(self.pelabuhan) for i in self.object_kapal]
             [i.draw(self.map) for i in self.object_kapal]
+            
             wu.add_table_kapal(self.ui.tableWidget_kapal,self.object_kapal)
             wu.add_table_pelabuhan(self.ui.tableWidget_pelabuhan, self.pelabuhan.get_barang())
             
@@ -193,9 +200,9 @@ class Main(QMainWindow):
             self.ui.pushButton_start_simulasi.setText('Start Simulasi')
             self.ui.pushButton_reset.setEnabled(True)
         else:
-            # time_step = 1000*0.1/self.ui.spinBox.value()
-            # self.timer1.start(time_step)
-            self.timer1.start()
+            time_step = 1000*0.1/10
+            self.timer1.start(time_step)
+            # self.timer1.start()
             self.ui.pushButton_start_simulasi.setText('Stop Simulasi')
             self.ui.pushButton_reset.setEnabled(False)
             
@@ -205,7 +212,7 @@ class Main(QMainWindow):
         akhir = self.data["Wave"][self.wave_count]["Tanggal Akhir"]
 
         if (date == akhir):
-            if self.wave_count < len(self.data["Wave"]):
+            if self.wave_count < len(self.data["Wave"])-1:
                 self.wave_count = (self.wave_count+1)
         
         data = []
@@ -221,10 +228,8 @@ class Main(QMainWindow):
             
     def update(self):
         self.check_wave(3)
-
         if self.date is None:
             self.date = self.ui.dateTimeEdit.dateTime()
-       
             a = self.date.addSecs(0.1*60*60)
             self.ui.dateTimeEdit_2.setDateTime(a)
             self.ui.dateTimeEdit.setEnabled(False)
@@ -233,7 +238,7 @@ class Main(QMainWindow):
             a = self.ui.dateTimeEdit_2.dateTime().addSecs(0.1*60*60)
             self.ui.dateTimeEdit_2.setDateTime(a)
         if self.object_kapal is not None:
-            
+            self.n += 1
             [i.update(self.pelabuhan) for i in self.object_kapal]
             self.pelabuhan.checking_posisi(self.object_kapal)
             
@@ -246,10 +251,7 @@ class Main(QMainWindow):
             wu.update_table_barang(self.ui.tableWidget_2,self.pelabuhan.get_barang_sampai())
             
     def reset(self):
-        
-        
         [self.pelabuhan.lis_pelabuhan[i].reset() for i in self.pelabuhan.lis_pelabuhan]
-        
         rute = [(i.full_rute_barang, i.rute_name) for i in self.object_kapal]
         self.object_kapal = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"], kpl["rute"], kpl["speed"],kpl) for kpl in self.data["Kapal"]]
         for kpl in self.object_kapal:
@@ -258,10 +260,8 @@ class Main(QMainWindow):
         self.ui.tableWidget_kapal.clear()
         self.ui.tableWidget_pelabuhan.clear()
         self.ui.tableWidget_2.clear()
-        
         self.pelabuhan.add_barang(self.data["Barang"])
         self.pelabuhan.add_transit(self.data)
-        
         self.ui.dateTimeEdit.setDateTime(self.data["Wave"][0]["Tanggal Awal"])
         self.ui.dateTimeEdit_2.setDateTime(self.data["Wave"][0]["Tanggal Awal"])
         
@@ -299,37 +299,28 @@ class Main(QMainWindow):
                 
                 wu.add_table(self.ui.tableWidget,self.data["Barang"])
                 
-                
                 self.ui.dateTimeEdit.setDateTime(self.data["Wave"][0]["Tanggal Awal"])
                 self.ui.dateTimeEdit_2.setDateTime(self.data["Wave"][0]["Tanggal Awal"])
                 
-                # self.check_wave(3)
+                # self.object_kapal = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"], kpl["rute"], kpl["speed"],kpl) for kpl in self.data["Kapal"]]
+                # [i.draw(self.map) for i in self.object_kapal]
                 
-                self.object_kapal = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"], kpl["rute"], kpl["speed"],kpl) for kpl in self.data["Kapal"]]
-                [i.draw(self.map) for i in self.object_kapal]
-                
-                original_port = { i["nama"]: [i["kategori"],i["rute"][0]]for i in self.data["Kapal"]}
+                # original_port = { i["nama"]: [i["kategori"],i["rute"][0]]for i in self.data["Kapal"]}
     
-                data_kode_barang = self.pelabuhan.get_rute_barang(self.data["port"],original_port, self.data["Daftar Pelabuhan"])
-                #    data_kode_barang = self.pelabuhan.get_rute_barang2(self.data["port"],original_port, self.data["Daftar Pelabuhan"])
-                for kpl in self.object_kapal:
-                    original_port = kpl.rute_name[0]
-                    if kpl.kategori in ["TL", "PL"]:
-                        kpl.add_rute(self.pelabuhan,random_route(data_kode_barang["Jarak Jauh"],original_port, self.data["port"]))
-                    else:
-                        #    kpl.add_rute(self.pelabuhan,random_route(data_kode_barang["Jarak Dekat"],original_port))
-                        #    kpl.add_rute(self.pelabuhan,random_route(data_kode_barang["Jarak Dekat"][kpl.nama],original_port))
-                        route = self.choose_route(data_kode_barang["Jarak Dekat"], self.data["Spesial PR"], original_port)
-                        kpl.add_rute(self.pelabuhan,route)
+                # data_kode_barang = self.pelabuhan.get_rute_barang(self.data["port"],original_port, self.data["Daftar Pelabuhan"])
+                # #    data_kode_barang = self.pelabuhan.get_rute_barang2(self.data["port"],original_port, self.data["Daftar Pelabuhan"])
+                # for kpl in self.object_kapal:
+                #     original_port = kpl.rute_name[0]
+                #     if kpl.kategori in ["TL", "PL"]:
+                #         kpl.add_rute(self.pelabuhan,random_route(data_kode_barang["Jarak Jauh"],original_port, self.data["port"]))
+                #     else:
+                #         #    kpl.add_rute(self.pelabuhan,random_route(data_kode_barang["Jarak Dekat"],original_port))
+                #         #    kpl.add_rute(self.pelabuhan,random_route(data_kode_barang["Jarak Dekat"][kpl.nama],original_port))
+                #         route = self.choose_route(data_kode_barang["Jarak Dekat"], self.data["Spesial PR"], original_port)
+                #         kpl.add_rute(self.pelabuhan,route)
                                     
-                wu.add_table_kapal(self.ui.tableWidget_kapal,self.object_kapal)
-                wu.add_table_pelabuhan(self.ui.tableWidget_pelabuhan, self.pelabuhan.get_barang())
-
-                for i in self.pelabuhan.lis_pelabuhan:
-                    brg = self.pelabuhan.lis_pelabuhan[i].barang
-                for i in self.object_kapal:
-                    pass
-                    # print(i.rute_name)
+                # wu.add_table_kapal(self.ui.tableWidget_kapal,self.object_kapal)
+                # wu.add_table_pelabuhan(self.ui.tableWidget_pelabuhan, self.pelabuhan.get_barang())
         
             else:
                 reply = QMessageBox.warning(self, 'File Not Found', 'Looking for "Data.xlsx" & "Data Ship.xlsx"',  QMessageBox.Ok)
