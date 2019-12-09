@@ -20,6 +20,7 @@ class GA_Trainer():
         self.original_port = { i["nama"]: [i["kategori"],i["rute"][0]]for i in self.data["Kapal"]}
         self.createPelabuhan()
         self.p = 0
+        self.max_itter = None
 
     def createPelabuhan(self):
         self.pelabuhan = ls.JaringanPelabuhan()
@@ -153,17 +154,23 @@ class GA_Trainer():
                       Itteration = {n}
                       ================
                       """)
+            if self.max_itter is not None:
+                if  n > self.max_itter*3 : 
+                    cost = float("inf")
+                    break
             if (beban_kapal <= 0) and (sisa <= 0) and (transit <= 0):
                 break
+        if self.max_itter is not None:
+            self.max_itter = max(n, self.max_itter)
+        else:
+            self.max_itter = n
         bar.finish()
-        print(n)
-        return int(cost)
+        return (cost)
     
     def rankRoutes(self):
         self.fitnessResults = {}
         for i in range(0,len(self.pupulation_kapal)):
             self.fitnessResults[i] = self.getFitness(i)
-            print(i, self.fitnessResults[i])
         self.fitnessResults = sorted(self.fitnessResults.items(), key = operator.itemgetter(1), reverse = False)
 
         
@@ -228,7 +235,8 @@ class GA_Trainer():
             
     def mutatePopulation(self, mutationRate):
         for ind in range(0, len(self.pupulation_kapal)):
-            self.mutate(self.pupulation_kapal[ind], mutationRate)
+            if self.fitnessResults[0][0] != ind:
+                self.mutate(self.pupulation_kapal[ind], mutationRate)
 
     def nextGeneration(self):
         self.selection(self.eliteSize)#eliteSize
@@ -236,7 +244,6 @@ class GA_Trainer():
         self.breedPopulation(self.eliteSize)
         self.mutatePopulation(self.mutationRate)
         self.rankRoutes()
-        
         return self.fitnessResults[0][1]
 
     def extract_best_route(self):
