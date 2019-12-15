@@ -1016,8 +1016,12 @@ class Kapal():
         self.bm_time = data["bm_time"]
         self.waktu_singgah_max =  data["bm_time"]
         self.waktu_singgah_max = 12
-        
-        
+
+        self.travel_cost = 0
+        self.bongkar_cost = 0
+        self.storage_cost = 0
+        self.inventory_cost = 0
+
         if kategori.lower() == "tl": 
             self.option = "{color : '#ff0000', radius : 3,fillOpacity:0.7}"
 
@@ -1155,7 +1159,9 @@ class Kapal():
                     
                 self.before_loc = loc1
                 l = geopath.getPathLength(loc1[0],loc1[1],loc2[0],loc2[1])/1000
-                self.cost += self.cost_function_perjalanan(l)
+                a = self.cost_function_perjalanan(l)
+                self.cost += int(a)
+                self.travel_cost += int(a)
                 
                 self.current_position += l
                 if self.marker is not None:
@@ -1180,7 +1186,13 @@ class Kapal():
                 if self.barang_kosong :
                     pass
                 else:
-                    self.cost += self.cost_function_singgah((self.time_step*60))
+                    a = self.cost_function_singgah((self.time_step*60))
+                    self.cost += sum(a)
+
+                    self.bongkar_cost += a[0]
+                    self.storage_cost += a[1]
+                    self.inventory_cost += a[2]
+                    
                     self.lama_perjalanan += (self.time_step*60)
                     self.singgah += (self.time_step*60)
             else:
@@ -1202,13 +1214,16 @@ class Kapal():
                 "Lama Perjalanan" : str(timedelta(minutes=self.lama_perjalanan))[:-3], 
 #                "Lokasi Sekarang": str(int(100*self.current_position/self.total_path))+"%",
                 "Lokasi" : self.rute2["nama"], 
-                "Total" : str(int(self.cost))
+                "Total" : str(int(self.cost)),
+                "travel_cost" :str(float(self.travel_cost)),
+                "bongkar_cost" :str(float(self.bongkar_cost)), 
+                "storage_cost" :str(float(self.storage_cost)), 
+                "inventory_cost" :str(float(self.inventory_cost)), 
                 }
         
     def cost_function_perjalanan(self,jarak):
         name = self.rute2["nama"].split(" - ")[0]
         total_cost_travel_time = self.data["inventory_cost"][name] *self.data["bm_time"][name] *(self.data["avg_docking_time"][name]*(jarak/self.speed))
-        
         return total_cost_travel_time
     
     def cost_function_singgah(self,waktu):
@@ -1217,11 +1232,13 @@ class Kapal():
         total_cost_storage = 0
         if self.singgah < self.data["bm_time"][name]:
               total_cost_bongkar = self.beban_angkut * waktu * self.data["C_bm"][name]
+              
         else:
               total_cost_storage = self.beban_angkut * waktu * self.data["C_storage"][name]
+              
         cost_bongkar_time = self.data["inventory_cost"][name] * (self.beban_angkut /self.data["C_bm"][name])
         
-        return total_cost_bongkar + total_cost_storage + cost_bongkar_time
+        return [int(total_cost_bongkar) , int(total_cost_storage) , int(cost_bongkar_time)]
         
     def ambil_barang(self,brg, mode = "No Transit", pel = None):
         barang = brg.copy()

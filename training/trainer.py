@@ -1,5 +1,6 @@
 from utils import preprocessing, geopath
 from models import logistic_models as ls
+import matplotlib.pyplot as plt
 import random
 import operator
 import pandas as pd
@@ -23,6 +24,10 @@ class GA_Trainer():
         self.createPelabuhan()
         self.p = 0
         self.max_itter = None
+
+        self.y_plot = []
+
+        self.bar_char_data = []
 
         self.data_output = "Generation\tRoute\tItteration\tCost\n"
         self.itteration = 0
@@ -179,6 +184,8 @@ class GA_Trainer():
         bar.finish()
         if mode == "no Test":
             self.data_output += f"{self.itteration}\t{index+1}\t{n}\t{cost}\n"
+        elif mode == "test":
+            pass
         return (cost)
     
     def rankRoutes(self):
@@ -260,7 +267,7 @@ class GA_Trainer():
         self.mutatePopulation(self.mutationRate)
         self.rankRoutes()
         print(f"Best Route : {self.fitnessResults[0][0]+1} | Cost : {self.fitnessResults[0][1]}")
-
+        self.y_plot.append(self.fitnessResults[0][1])
         self.data_output += f"{self.itteration}\t{self.fitnessResults[0][0]+1}\t\t{self.fitnessResults[0][1]}\n"
         
         return self.fitnessResults[0][1]
@@ -282,10 +289,11 @@ class GA_Trainer():
         file_dir = os.path.join(file_dir, file_name)
         if not os.path.exists(file_dir):
             os.makedirs(file_dir)
-        
+
+        obj = self.extract_best_route()
         file_pickle = os.path.join(file_dir, file_name+"_ship.pickle")
         pickle_out = open(file_pickle,"wb")
-        pickle.dump(self.extract_best_route(), pickle_out)
+        pickle.dump(obj, pickle_out)
         pickle_out.close()
 
         file_pickle = os.path.join(file_dir, file_name+"_data.pickle")
@@ -313,6 +321,48 @@ class GA_Trainer():
             text = f"====================================================\n\nPop Size = {self.popSize}\nMutation Rate = {self.mutationRate}\nElite Size = {self.eliteSize}\nGeneration = {self.itteration}\nTime Step = {self.timestep} Jam\n\n===================================================="
             f.write(text)
 
+        plt.figure(0) 
+        x = [i+1 for i in range(len(self.y_plot))]
+        plt.plot(x, self.y_plot, label='Cost')
+        plt.xlabel('Generation')
+        plt.ylabel('Cost')
+        plt.title("Training")
+        plt.legend()
+        file_pickle = os.path.join(file_dir, f"{file_name}.png")
+        plt.savefig(file_pickle,bbox_inches='tight', transparent=True)
+
+        file_pickle = os.path.join(file_dir, "Best Route Cost.csv")
+        f = open(file_pickle,"w") 
+        f.write(self.text)
+        f.close()
+        
+        plt.figure(0)
+        N = len(self.bar_char_data[0][1])
+        max_val = 0
+        ind = np.arange(N) 
+
+        bar = []
+        bottom = np.array([0 for i in range(N)])
+        label = []
+        for i in self.bar_char_data[1:]:
+            label.append(i[0])
+            val = np.array(i[1]) 
+            bar.append(plt.bar(ind, val, 0.5, bottom=bottom))
+            bottom = val + bottom
+            max_val = max(max_val, np.max(bottom))
+        
+        max_val = max_val*1.3
+
+        plt.xlabel('Nama Kapal')
+        plt.ylabel('Cost')
+        plt.ylim((0, max_val))
+        plt.title("Cost Kapal")
+        plt.xticks(ind, tuple(self.bar_char_data[0][1]))
+        plt.legend(tuple(bar), tuple(label))
+
+        file_pickle = os.path.join(file_dir, f"{file_name}_bar.png")
+        plt.savefig(file_pickle,bbox_inches='tight', transparent=True)
+
         print("\nSaving Training Complete")
     def check_best_result(self):
         index = self.fitnessResults[0][0]
@@ -326,3 +376,49 @@ class GA_Trainer():
         self.pupulation_kapal[index] = obj
         print("\nTest Overal Best Route")
         self.getFitness(index, mode="test")
+        
+        self.bar_char_data.append(["label", []])
+        text = "Jenis Cost\t"
+        for kpl in self.pupulation_kapal[index]:
+            text += f"{kpl.nama} ({kpl.kategori})\t"
+            self.bar_char_data[-1][1].append(f"{kpl.nama} ({kpl.kategori})")
+        text += "\n"
+
+        self.bar_char_data.append(["Travel Cost", []])
+        text += "Travel Cost\t"
+        for i in ((self.pupulation_kapal[index])):
+            a = float(i.get_data()["travel_cost"])
+            text += f"{a}\t"
+            self.bar_char_data[-1][1].append(a)
+
+        text += "\n"
+        text += "Bongkar-Muat Cost\t"
+        self.bar_char_data.append(["Bongkar-Muat Cost", []])
+        for i in ((self.pupulation_kapal[index])):
+            a = float(i.get_data()["bongkar_cost"])
+            text += f"{a}\t"
+            self.bar_char_data[-1][1].append(a)
+
+
+        text += "\n"
+        text += "Storage Cost\t"
+        self.bar_char_data.append(["Storage Cost", []])
+        for i in ((self.pupulation_kapal[index])):
+            a = float(i.get_data()["storage_cost"])
+            text += f"{a}\t"
+            self.bar_char_data[-1][1].append(a)
+
+        text += "\n"
+        text += "Inventory Cost\t"
+        self.bar_char_data.append(["Inventory Cost", []])
+        for i in ((self.pupulation_kapal[index])):
+            a = float(i.get_data()["inventory_cost"])
+            text += f"{a}\t"
+            self.bar_char_data[-1][1].append(a)
+
+        text += "\n"
+        text += "Total Cost\t"
+        for i in ((self.pupulation_kapal[index])):
+            a = float(i.get_data()["Total"])
+            text += f"{a}\t"
+        self.text = text

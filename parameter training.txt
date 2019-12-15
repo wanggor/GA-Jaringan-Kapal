@@ -1,0 +1,4 @@
+popSize = 2
+elitsize = 1
+mutation = 0
+generation = 1
