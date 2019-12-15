@@ -1,8 +1,8 @@
 from training import train
-popSize = 2
-elitsize = 1
-mutation = 0.001
-generation = 1
+popSize = 5
+elitsize = 3
+mutation = 0.5
+generation = 2
 
 path = ["data/Data.xlsx", "data/Data Ship.xlsx"]
 

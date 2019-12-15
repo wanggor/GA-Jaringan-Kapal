@@ -210,8 +210,9 @@ class Main(QMainWindow):
             self.ui.pushButton_reset.setEnabled(True)
         else:
             time_step = 1000*0.1/10
-            self.timer1.start(time_step)
+            # self.timer1.start(time_step)
             # self.timer1.start()
+            self.timer1.start()
             self.ui.pushButton_start_simulasi.setText('Stop Simulasi')
             self.ui.pushButton_reset.setEnabled(False)
             
@@ -242,22 +243,34 @@ class Main(QMainWindow):
             a = self.date.addSecs(0.1*60*60)
             self.ui.dateTimeEdit_2.setDateTime(a)
             self.ui.dateTimeEdit.setEnabled(False)
-            
         else:
             a = self.ui.dateTimeEdit_2.dateTime().addSecs(0.1*60*60)
             self.ui.dateTimeEdit_2.setDateTime(a)
         if self.object_kapal is not None:
             self.n += 1
+
+            # if self.n == 10:
+            #     print( self.n, a)
+
             [i.update(self.pelabuhan) for i in self.object_kapal]
             self.pelabuhan.checking_posisi(self.object_kapal)
             
             cost = sum([float(i.get_data()["Total"]) for i in self.object_kapal])
-            self.label_total_cost.setText("{:,.2f}".format(cost))
-            self.label_total_Revenue.setText("{:,.2f}".format(self.Total_Nilai_Harga - cost))
+            
 
             wu.update_table_kapal(self.ui.tableWidget_kapal,[i.get_data() for i in self.object_kapal])
             wu.update_table_pelabuhan(self.ui.tableWidget_pelabuhan, self.pelabuhan.get_barang())
             wu.update_table_barang(self.ui.tableWidget_2,self.pelabuhan.get_barang_sampai())
+            
+            beban_kapal = sum([ float(i.beban_angkut) for i in self.object_kapal])
+            transit = sum([ float(i["Total"]) for i in self.pelabuhan.get_barang_transit()])
+            sisa = sum([ float(i["Total"]) for i in self.pelabuhan.get_barang()])
+            if (beban_kapal <= 0) and (sisa <= 0) and (transit <= 0):
+                if self.timer1.isActive():
+                    self.timer1.stop()
+                    self.ui.pushButton_start_simulasi.setText('Simulasi Selesai')
+                    self.ui.pushButton_start_simulas.setEnabled(False)
+                    self.ui.pushButton_reset.setEnabled(False)
             
     def reset(self):
         self.map.c
@@ -290,22 +303,31 @@ class Main(QMainWindow):
             # if exists(self.path[0]) and exists(self.path[1]):
             #     self.data = pr.parsing_data_2(self.path)
             #     self.create_pelabuhan()
+            file_check = False
             for subdir, dirs, files in os.walk(self.fileName):
                 for file in files:
                     filepath = subdir + os.sep + file
+                    if filepath.endswith(".csv"):
+                        with open(filepath) as csvfile:
+                            firstRow = csvfile.readlines(-1)
+                            fieldnames = tuple(firstRow[-1].strip('\n').split("\t"))
+
+                            self.cost = float(fieldnames[-1])
+
                     if filepath.endswith(".pickle"):
-                        if (filepath.split("_")[-1]) == "data.pickle":
+                        if (filepath.split("_")[-1]) == "data.pickle" :
                             file = open(filepath, 'rb')
                             self.data = pickle.load(file)
                             file.close()
-                            self.create_pelabuhan()
+                            file_check = True
                         elif (filepath.split("_")[-1]) == "ship.pickle":
                             file = open(filepath, 'rb')
                             self.object_kapal = pickle.load(file)
                             file.close()
-                            self.create_simulation()
-
-        
+                            file_check = True
+                if file_check:
+                    self.create_pelabuhan()
+                            
             # else:
             #     reply = QMessageBox.warning(self, 'File Not Found', 'Looking for "Data.xlsx" & "Data Ship.xlsx"',  QMessageBox.Ok)
 
@@ -330,6 +352,9 @@ class Main(QMainWindow):
         self.pelabuhan.draw(self.map, False, self.data["Spesial PR"], self.picker)
         
         wu.add_table(self.ui.tableWidget,self.data["Barang"])
+        self.label_total_cost.setText("{:,.2f}".format(self.cost))
+        self.label_total_Revenue.setText("{:,.2f}".format(self.Total_Nilai_Harga - self.cost))
+        self.create_simulation()
 
     def choose_route(self,data_barang, data,  original_port):
         route = [{}, []]

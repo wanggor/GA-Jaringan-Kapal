@@ -1,0 +1,6 @@
+1. TL1 : Tanjung Perak, Namrole, Ambon, Kisar, Saumlaki, Dobo, Tanjung Priok, Namlea, Tual, Banda Neira, Moa, Makassar, 
+2. TL2 : Makassar, Tanjung Perak, Ambon, Tanjung Priok, Kisar, Saumlaki, Namrole, Moa, Tual, Banda Neira, Dobo, Namlea, 
+3. PR_AMBON : Ambon, Leksula, Bula, Waemulang, Fogi, Manipa, Amahai, Tifu, Namlea, Buano, Ambalau, Kelimoi, Namrole, Kelang, Werinama, Kobisadar, Taniwel, Kelimuri, Wamsisi, P.Geser, Wahai, 
+4. PL1 : Tanjung Perak, Saumlaki, Tanjung Priok, Namlea, Moa, Namrole, Makassar, Kisar, Tual, Ambon, Dobo, Banda Neira, 
+5. PR_TUAL : Banda Neira, Tabarfane, P.Kesui, Jerol, Gorom, Meror, Marlasi, Longgar, Weduar, Tual, Banda Eli, P.Manawoka, Toyando, Dobo, Lelam Kojabi, Kaimer, Mangur, P.Tior, Holat, Fadol, Mun, Kaisui, Tam, Kailakat, Elat, Benjina, P.Kur, 
+6. PR_SAUMLAKI : Seira, Sofyanin/Rumayaan, Larat, Marsela, Romang, Adault/Lingat, Wulur, Nurkat, Eray, Kisar1, Nila, Serua, Lakor, Lelang, P.Luang, Kisar, Ilwaki, Tepa, Arwala/Sutilirang, P.Leti, Moa, Wunlah, Tutukembong, Teon, Kroing, Saumlaki, Lewa/Dai, Molu, Rumean, Bebar, Dawera/Dawelor, 
