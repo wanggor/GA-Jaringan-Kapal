@@ -75,6 +75,7 @@ def parsing_data_2(path):
         if ex.iloc[0,1] == "TL":
             capacity = dataTL["ship_char"]['VC']
             speed =  dataTL["ship_char"]['V']
+            max_voyage = dataTL["ship_char"]['max_voyage']
             bm_time = {i:dataTL[i]["bm_time"] for i in dataTL.keys()}
             avg_docking_time = {i:dataTL[i]["avg_docking_time"] for i in dataTL.keys()}
             port_storage_time = {i:dataTL[i]["port_storage_time"] for i in dataTL.keys()}
@@ -85,6 +86,7 @@ def parsing_data_2(path):
         elif ex.iloc[0,1] == "PL":
             capacity = dataPL["ship_char"]['VC']
             speed =  dataPL["ship_char"]['V']
+            max_voyage = dataPL["ship_char"]['max_voyage']
             bm_time = {i:dataPL[i]["bm_time"] for i in dataPL.keys()}
             avg_docking_time = {i:dataPL[i]["avg_docking_time"] for i in dataPL.keys()}
             port_storage_time = {i:dataPL[i]["port_storage_time"] for i in dataPL.keys()}
@@ -95,6 +97,7 @@ def parsing_data_2(path):
         elif ex.iloc[0,1] == "PR":
             capacity = dataPR["ship_char"]['VC']
             speed =  dataPR["ship_char"]['V']
+            max_voyage = dataPR["ship_char"]['max_voyage']
             bm_time = {i:dataPR[i]["bm_time"] for i in dataPR.keys()}
             avg_docking_time = {i:dataPR[i]["avg_docking_time"] for i in dataPR.keys()}
             port_storage_time = {i:dataPR[i]["port_storage_time"] for i in dataPR.keys()}
@@ -107,7 +110,7 @@ def parsing_data_2(path):
                         "nama":name,
                         "kategori": ex.iloc[0,1],
                         "kapasitas": capacity,
-                        "rute": list(ex.iloc[:,3].values),
+                        "rute": list(ex.iloc[:,2].values),
                         "speed": speed,
                         "bm_time" :bm_time,
                         "avg_docking_time": avg_docking_time,
@@ -115,6 +118,7 @@ def parsing_data_2(path):
                         "C_bm": C_bm,
                         "C_storage": C_storage, 
                         "inventory_cost" : inventory_cost,
+                        "max_voyage" :max_voyage
                         }
                 )
     data['Wave'] = pd.read_excel(path[0], sheet_name ="wave_status").applymap(lambda x: x.strip() if isinstance(x, str) else x).to_dict("Report")

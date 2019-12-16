@@ -20,6 +20,8 @@ class GA_Trainer():
         self.timestep = timestep
         self.path = [path_data,path_ship]
         self.data = preprocessing.parsing_data_2(self.path)
+        # for i in range(len(self.data["Wave"])):
+        #     print(self.data["Wave"][i]["Tanggal Awal"], self.data["Wave"][i]["Tanggal Akhir"], self.data["Wave"][i]["Dawera/Dawelor"])
         self.original_port = { i["nama"]: [i["kategori"],i["rute"][0]]for i in self.data["Kapal"]}
         self.createPelabuhan()
         self.p = 0
@@ -71,7 +73,7 @@ class GA_Trainer():
             return None 
             
     def createObjectKapal(self):
-        obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"], kpl["rute"], kpl["speed"],kpl,self.timestep) for kpl in self.data["Kapal"]]
+        obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"],kpl["max_voyage"], kpl["rute"], kpl["speed"],kpl,self.timestep) for kpl in self.data["Kapal"]]
         # self.data_kode_barang = self.pelabuhan.get_rute_barang3(self.data["port"],self.original_port, self.data["Daftar Pelabuhan"],obj)
         data_kode_barang = self.pelabuhan.get_rute_barang(self.data["port"],self.original_port, self.data["Daftar Pelabuhan"])
         for kpl in obj:
@@ -222,7 +224,7 @@ class GA_Trainer():
         
         for i in range(0,eliteSize):
             obj = []
-            obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"], kpl["rute"], kpl["speed"],kpl,self.timestep) for kpl in self.data["Kapal"]]
+            obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"],kpl["max_voyage"], kpl["rute"], kpl["speed"],kpl,self.timestep) for kpl in self.data["Kapal"]]
             for n,m in enumerate(self.matingpool[i]):
                 rute_name = m.rute_name
                 barg = m.full_rute_barang
@@ -233,7 +235,7 @@ class GA_Trainer():
         self.pool = random.sample(self.matingpool, len(self.matingpool))
         for i in range(0, length):
             child = self.pelabuhan.breed2(self.pool[i], self.pool[len(self.matingpool)-i-1])
-            obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"], kpl["rute"], kpl["speed"],kpl,self.timestep) for kpl in self.data["Kapal"]]
+            obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"],kpl["max_voyage"], kpl["rute"], kpl["speed"],kpl,self.timestep) for kpl in self.data["Kapal"]]
             for i in range(len(child)):
                 obj[i].add_rute(self.pelabuhan, child[i])
             children.append(obj)
@@ -274,7 +276,7 @@ class GA_Trainer():
 
     def extract_best_route(self):
         index = self.fitnessResults[0][0]
-        obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"], kpl["rute"], kpl["speed"],kpl,self.timestep) for kpl in self.data["Kapal"]]
+        obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"],kpl["max_voyage"], kpl["rute"], kpl["speed"],kpl,self.timestep) for kpl in self.data["Kapal"]]
         for n,m in enumerate(self.pupulation_kapal[index]):
             rute_name = m.rute_name
             barg = m.full_rute_barang
@@ -367,7 +369,7 @@ class GA_Trainer():
     def check_best_result(self):
         index = self.fitnessResults[0][0]
 
-        obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"], kpl["rute"], kpl["speed"],kpl,self.timestep) for kpl in self.data["Kapal"]]
+        obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"],kpl["max_voyage"], kpl["rute"], kpl["speed"],kpl,self.timestep) for kpl in self.data["Kapal"]]
         for n,m in enumerate(self.pupulation_kapal[index]):
             rute_name = m.rute_name
             barg = m.full_rute_barang

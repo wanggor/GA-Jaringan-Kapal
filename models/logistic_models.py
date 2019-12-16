@@ -147,7 +147,7 @@ class JaringanPelabuhan():
             
     def add_barang(self, barang):
         for item in barang:
-            biaya = item['Nilai Barang']
+            biaya = 0
             self.lis_pelabuhan[item['Pelabuhan']].barang.append(
                     {
                             'Kode Barang': item['code barang'], 
@@ -737,6 +737,7 @@ class JaringanPelabuhan():
                 self.loading_barang(kpl, pel_singgah,a)
                 kpl.update_kapasitas()
 
+                # tujuan = []
                 tujuan = []
                 for i in kpl.barang:
                     for j in kpl.emergency_transit:
@@ -1006,7 +1007,7 @@ class JaringanPelabuhan():
     
                 
 class Kapal():
-    def __init__(self,pelabuhan, nama, kategori, kapasitas, rute, speed, data, time_step = 0.1):
+    def __init__(self,pelabuhan, nama, kategori, kapasitas, max_voyage, rute, speed, data, time_step = 0.1):
         
         self.rute_name = rute
         self.time_step = time_step #jam
@@ -1016,11 +1017,14 @@ class Kapal():
         self.bm_time = data["bm_time"]
         self.waktu_singgah_max =  data["bm_time"]
         self.waktu_singgah_max = 12
+        self.max_voyage = max_voyage
 
         self.travel_cost = 0
         self.bongkar_cost = 0
         self.storage_cost = 0
         self.inventory_cost = 0
+
+        self.jumlah_trayek = {}
 
         if kategori.lower() == "tl": 
             self.option = "{color : '#ff0000', radius : 3,fillOpacity:0.7}"
@@ -1179,8 +1183,6 @@ class Kapal():
                 self.is_singgah = True
 
                 
-                
-                
         elif self.is_singgah:
             if self.singgah <= self.waktu_singgah_max*60 or (self.barang_kosong) :
                 if self.barang_kosong :
@@ -1200,8 +1202,13 @@ class Kapal():
                 self.singgah = 0
                 self.is_singgah = False
                 self.count = 0
-
+                
+                if self.current_port == self.rute_name[0]:
+                    n = len(self.jumlah_trayek) + 1
+                    self.jumlah_trayek[n] = self.lama_perjalanan
+                    self.lama_perjalanan = 0
                 self.check_available_port(pelabuhan)
+                
 
 #        if not(self.barang_kosong) and self.beban_angkut == 0 and self.is_singgah:
 #              self.is_singgah = False
@@ -1211,7 +1218,7 @@ class Kapal():
                 "Nama" : self.nama, 
                 "Kategori" : self.kategori, 
                 "Kapasitas" : str(self.beban_angkut)+"/"+str(self.kapasitas), 
-                "Lama Perjalanan" : str(timedelta(minutes=self.lama_perjalanan))[:-3], 
+                "Lama Perjalanan" : str(timedelta(minutes=self.lama_perjalanan))[:-3] + f" ({len(self.jumlah_trayek)} Trayek)", 
 #                "Lokasi Sekarang": str(int(100*self.current_position/self.total_path))+"%",
                 "Lokasi" : self.rute2["nama"], 
                 "Total" : str(int(self.cost)),
@@ -1470,14 +1477,45 @@ class Kapal():
                                     next_trip[1] = (n_port)
                                     self.skip_step = inc
                                     break
-                if (next_trip[1] !=   self.rute_name[(idx+1) % len(self.rute_name)]):
+                if (next_trip[1] !=   self.rute_name[(idx+1) % len(self.rute_name)] ) or next_trip[1] == self.rute_name[0]:
+                # if (next_trip[1] !=   self.rute_name[(idx+1) % len(self.rute_name)]) or (index == 0 and [i for i in pelabuhan.pel_cuaca_tinggi if i in self.rute_name] == []):
                     break
+        # if self.kategori == "PR":
+        #     min_d = None
+        #     next_emergency = None
+        #     if next_trip[1] in pelabuhan.pel_cuaca_tinggi:
+        #         idx = self.rute_name.index(next_trip[1])
+        #         # if self.rute_name[(idx+1) % len(self.rute_name)] not in pelabuhan.pel_cuaca_tinggi:
+        #         next_trip[1]  = self.rute_name[0]
+        #         for i in range(len(self.rute_name)):
+        #             emergenc_port = self.rute_name[(idx+1+i) % len(self.rute_name)]
+        #             if emergenc_port not in pelabuhan.pel_cuaca_tinggi:
+        #                 if pelabuhan.lis_pelabuhan[emergenc_port].barang or pelabuhan.lis_pelabuhan[emergenc_port].barang_transit or [i for i in self.barang if (i["Tujuan Pelabuhan"] == emergenc_port or i["Transit"] == emergenc_port)]:
+        #                     next_trip[1] = next_emergency
+        #                     break
+        #                 elif pelabuhan.lis_pelabuhan[emergenc_port].kategori == "P":
+                            
+        #                     if (next_trip[1],emergenc_port) not in pelabuhan.rute:
+        #                         rute = pelabuhan.rute[(emergenc_port, next_trip[1])]
+        #                     else:
+        #                         rute = pelabuhan.rute[(next_trip[1],emergenc_port)]
+
+        #                     d = sum([ geopath.getPathLength(rute[i][0],rute[i][1],rute[i+1][0],rute[i+1][1]) for i in range(len(rute)-1)])
+        #                     if min_d == None:
+        #                         min_d = d
+        #                         next_emergency = emergenc_port
+        #                     elif min_d > d:
+        #                         next_emergency = emergenc_port
+        #                         min_d = d
+        #                     self.emergency_transit[next_trip[1]] = next_emergency
+        #                     next_trip[1] = next_emergency
+        #                     break
         
-        
-        if self.kategori == "PR":
+        if self.kategori == "PR" and next_trip[1] != self.rute_name[0]:
             min_d = None
             next_emergency = None
             if next_trip[1] in pelabuhan.pel_cuaca_tinggi:
+                
                 idx = self.rute_name.index(next_trip[1])
                 if self.beban_angkut == self.kapasitas:
                     for i in range(len(self.rute_name)):
@@ -1499,7 +1537,7 @@ class Kapal():
                 else:
                     if self.rute_name[(idx+1) % len(self.rute_name)] not in pelabuhan.pel_cuaca_tinggi:
                         a = self.rute_name[(idx+1) % len(self.rute_name)]
-                        if pelabuhan.lis_pelabuhan[a].barang or pelabuhan.lis_pelabuhan[a].barang_transit:
+                        if pelabuhan.lis_pelabuhan[a].barang or pelabuhan.lis_pelabuhan[a].barang_transit or [i for i in self.barang if (i["Tujuan Pelabuhan"] == a or i["Transit"] == a)]:
                             next_trip[1] = a
                         else:
                             for i in range(len(self.rute_name)):
@@ -1561,6 +1599,8 @@ class Kapal():
 
             #     if brg["Asal Pelabuhan"] in pelabuhan.pel_cuaca_tinggi and self.kategori == "TL" and self.current_port !=  brg["Tujuan Pelabuhan"]:
             #         next_trip[1] = brg["Tujuan Pelabuhan"]
+        if self.lama_perjalanan >= self.max_voyage * 24 *60:
+            next_trip[1] = self.rute_name[0]
                     
         self.rute2 = pelabuhan.get_full_path(self.speed*1000*self.time_step,next_trip)[0]
         self.current_port = next_trip[1]

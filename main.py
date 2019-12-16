@@ -185,7 +185,7 @@ class Main(QMainWindow):
             self.train_thread = None
    
     def create_simulation(self):
-        obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"], kpl["rute"], kpl["speed"],kpl) for kpl in self.data["Kapal"]]
+        obj = [ls.Kapal(self.pelabuhan, kpl["nama"], kpl["kategori"], kpl["kapasitas"],kpl["max_voyage"], kpl["rute"], kpl["speed"],kpl) for kpl in self.data["Kapal"]]
         for n,m in enumerate(self.object_kapal):
             rute_name = m.rute_name
             barg = m.full_rute_barang
@@ -269,8 +269,8 @@ class Main(QMainWindow):
                 if self.timer1.isActive():
                     self.timer1.stop()
                     self.ui.pushButton_start_simulasi.setText('Simulasi Selesai')
-                    self.ui.pushButton_start_simulas.setEnabled(False)
-                    self.ui.pushButton_reset.setEnabled(False)
+                    self.ui.pushButton_start_simulasi.setEnabled(False)
+                    # self.ui.pushButton_reset.setEnabled(False)
             
     def reset(self):
         self.map.c
@@ -307,11 +307,10 @@ class Main(QMainWindow):
             for subdir, dirs, files in os.walk(self.fileName):
                 for file in files:
                     filepath = subdir + os.sep + file
-                    if filepath.endswith(".csv"):
+                    if filepath.endswith("log cost.csv"):
                         with open(filepath) as csvfile:
                             firstRow = csvfile.readlines(-1)
                             fieldnames = tuple(firstRow[-1].strip('\n').split("\t"))
-
                             self.cost = float(fieldnames[-1])
 
                     if filepath.endswith(".pickle"):
@@ -327,7 +326,7 @@ class Main(QMainWindow):
                             file_check = True
                 if file_check:
                     self.create_pelabuhan()
-                            
+
             # else:
             #     reply = QMessageBox.warning(self, 'File Not Found', 'Looking for "Data.xlsx" & "Data Ship.xlsx"',  QMessageBox.Ok)
 
@@ -355,6 +354,9 @@ class Main(QMainWindow):
         self.label_total_cost.setText("{:,.2f}".format(self.cost))
         self.label_total_Revenue.setText("{:,.2f}".format(self.Total_Nilai_Harga - self.cost))
         self.create_simulation()
+
+        self.ui.dateTimeEdit.setDateTime(self.data["Wave"][0]["Tanggal Awal"])
+        self.ui.dateTimeEdit_2.setDateTime(self.data["Wave"][0]["Tanggal Awal"])
 
     def choose_route(self,data_barang, data,  original_port):
         route = [{}, []]
