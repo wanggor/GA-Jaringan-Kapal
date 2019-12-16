@@ -262,15 +262,15 @@ class Main(QMainWindow):
             wu.update_table_pelabuhan(self.ui.tableWidget_pelabuhan, self.pelabuhan.get_barang())
             wu.update_table_barang(self.ui.tableWidget_2,self.pelabuhan.get_barang_sampai())
             
-            beban_kapal = sum([ float(i.beban_angkut) for i in self.object_kapal])
-            transit = sum([ float(i["Total"]) for i in self.pelabuhan.get_barang_transit()])
-            sisa = sum([ float(i["Total"]) for i in self.pelabuhan.get_barang()])
-            if (beban_kapal <= 0) and (sisa <= 0) and (transit <= 0):
-                if self.timer1.isActive():
-                    self.timer1.stop()
-                    self.ui.pushButton_start_simulasi.setText('Simulasi Selesai')
-                    self.ui.pushButton_start_simulasi.setEnabled(False)
-                    # self.ui.pushButton_reset.setEnabled(False)
+            # beban_kapal = sum([ float(i.beban_angkut) for i in self.object_kapal])
+            # transit = sum([ float(i["Total"]) for i in self.pelabuhan.get_barang_transit()])
+            # sisa = sum([ float(i["Total"]) for i in self.pelabuhan.get_barang()])
+            # if (beban_kapal <= 0) and (sisa <= 0) and (transit <= 0) and :
+            #     if self.timer1.isActive():
+            #         self.timer1.stop()
+            #         self.ui.pushButton_start_simulasi.setText('Simulasi Selesai')
+            #         self.ui.pushButton_start_simulasi.setEnabled(False)
+            #         self.ui.pushButton_reset.setEnabled(False)
             
     def reset(self):
         self.map.c
@@ -343,7 +343,8 @@ class Main(QMainWindow):
                     self.data["Daftar Pelabuhan"])
         
         self.pelabuhan.add_multiPelabuhan(self.data["Daftar Pelabuhan"])
-        self.pelabuhan.add_rute_from_lis(self.data["Rute"])
+        # self.pelabuhan.add_rute_from_lis(self.data["Rute"])
+        self.pelabuhan.add_extraRoute(self.data["Rute"])
         
         self.pelabuhan.add_barang(self.data["Barang"])
         self.pelabuhan.add_transit_cluster(self.data)

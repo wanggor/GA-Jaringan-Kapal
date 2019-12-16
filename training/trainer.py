@@ -37,7 +37,8 @@ class GA_Trainer():
     def createPelabuhan(self):
         self.pelabuhan = ls.JaringanPelabuhan()
         self.pelabuhan.add_multiPelabuhan(self.data["Daftar Pelabuhan"])
-        self.pelabuhan.add_rute_from_lis(self.data["Rute"])
+        self.pelabuhan.add_extraRoute(self.data["Rute"])
+        # self.pelabuhan.add_rute_from_lis(self.data["Rute"])
 
         self.pelabuhan.add_barang(self.data["Barang"])
         self.pelabuhan.add_transit_cluster(self.data)
@@ -257,7 +258,7 @@ class GA_Trainer():
             
     def mutatePopulation(self, mutationRate):
         for ind in range(0, len(self.pupulation_kapal)):
-            if self.fitnessResults[0][0] != ind:
+            if ind != 0:
                 self.mutate(self.pupulation_kapal[ind], mutationRate)
 
     def nextGeneration(self):

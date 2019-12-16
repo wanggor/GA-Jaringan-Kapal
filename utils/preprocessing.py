@@ -47,6 +47,7 @@ def parsing_data_2(path):
 #    data["Pelabuhan Pengumpul"] = pel[pel["Tipe"] == "P"].to_dict("Report")
     
     data['Rute'] = pd.read_excel(path[0], sheet_name ="Rute").to_dict("Report")
+    
     data["Barang"] = pd.read_excel(path[0], sheet_name ="Barang").to_dict("Report")
     
     data["Harga Barang"] = pd.read_excel(path[0], sheet_name ="Biaya_Jarak_Teus")
@@ -59,10 +60,10 @@ def parsing_data_2(path):
         if type(i['Pelabuhan Asal']) == str:
             name = (i['Pelabuhan Asal'],i['Pelabuhan Tujuan'])
             a[name] =[]
-        a[name].append([i['LATITUDE'],i['LONGITUDE']])
+        a[name].append([parse_dms(i['LATITUDE']),parse_dms(i['LONGITUDE'])])
     
     data['Rute'] = a
-    
+    print(data['Rute'])
     dataTL =pd.read_excel(path[0], sheet_name="TL_char", index_col = "Unnamed: 0").fillna(3).to_dict()
     dataPL =pd.read_excel(path[0], sheet_name="PL_char", index_col = "Unnamed: 0").fillna(3).to_dict()
     dataPR =pd.read_excel(path[0], sheet_name="PR_char", index_col = "Unnamed: 0").fillna(3).to_dict()

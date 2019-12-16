@@ -70,7 +70,7 @@
           <bool>true</bool>
          </property>
          <property name="currentIndex">
-          <number>0</number>
+          <number>2</number>
          </property>
          <widget class="QWidget" name="tab_2">
           <attribute name="title">
@@ -750,7 +750,7 @@
                  </font>
                 </property>
                 <property name="text">
-                 <string>Revenue    :</string>
+                 <string>Profit  :</string>
                 </property>
                </widget>
               </item>

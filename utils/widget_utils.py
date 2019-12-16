@@ -13,6 +13,8 @@ from re import split
 def add_table(table_obj,data):
     count_row = len(data)
     column_index = list(data[0].keys())
+    column_index[2] = "Muatan (Teus/Ton)"
+    column_index[4] = "Revenue (Rp)"
     count_columns = len(column_index)
     
     table_obj.setRowCount(count_row)
@@ -35,7 +37,7 @@ def add_table_barang(table_obj,data):
     table_obj.setRowCount(count_row)
     table_obj.setColumnCount(4)
     # table_obj.setHorizontalHeaderLabels(["Kode Barang", "Pelabuhan Asal", "Pelabuhan Tujuan", "Penyelesaian", "Pendapatan"])
-    table_obj.setHorizontalHeaderLabels(["Kode Barang", "Pelabuhan Asal", "Pelabuhan Tujuan", "Penyelesaian"])
+    table_obj.setHorizontalHeaderLabels(["Kode Barang", "Pelabuhan Asal", "Pelabuhan Tujuan", "Barang Sampai (%)"])
     table_obj.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
 #TODO 
@@ -64,7 +66,7 @@ def add_table_kapal(table_obj, data):
     table_obj.setColumnCount(4)
     
     # table_obj.setHorizontalHeaderLabels(["Nama", "Kapasitas", "Lama Perjalanan", "Posisi", "Cost"])
-    table_obj.setHorizontalHeaderLabels(["Nama", "Kapasitas", "Lama Perjalanan", "Posisi"])
+    table_obj.setHorizontalHeaderLabels(["Nama", "Kapasitas(Teus/Ton)", "Lama Perjalanan (Voyage)", "Rute Kapal"])
     table_obj.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
     
 def update_table_kapal(table_obj,data):
@@ -85,7 +87,7 @@ def add_table_pelabuhan(table_obj, data):
     table_obj.setRowCount(count_row)
     table_obj.setColumnCount(4)
     
-    table_obj.setHorizontalHeaderLabels(["Pelabuhan", "Berat Barang", "Transit", "Kondisi", "Jumlah Nominal"])
+    table_obj.setHorizontalHeaderLabels(["Pelabuhan", "Muatan (Teus/Ton)", "Transit", "Kondisi Gelombang(m)", "Jumlah Nominal"])
     table_obj.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
   

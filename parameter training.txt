@@ -1,4 +1,4 @@
-popSize = 2
-elitsize = 1
-mutation = 0
+popSize = 3
+elitsize = 2
+mutation = 1
 generation = 1
