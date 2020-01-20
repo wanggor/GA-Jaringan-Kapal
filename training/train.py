@@ -27,7 +27,7 @@ class Train(QThread):
         
         self.generation = parameter['Generations']
         self.popSize = parameter['popSize']
-        
+         
     def run(self):
         i=0
         remaining_history = []

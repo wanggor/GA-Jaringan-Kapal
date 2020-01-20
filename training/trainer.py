@@ -78,14 +78,55 @@ class GA_Trainer():
         # self.data_kode_barang = self.pelabuhan.get_rute_barang3(self.data["port"],self.original_port, self.data["Daftar Pelabuhan"],obj)
         data_kode_barang = self.pelabuhan.get_rute_barang(self.data["port"],self.original_port, self.data["Daftar Pelabuhan"])
         for kpl in obj:
-                original_port = kpl.rute_name[0]
-                if kpl.kategori in ["TL", "PL"]:
-                    kpl.add_rute(self.pelabuhan,self.random_route(data_kode_barang["Jarak Jauh"],original_port, self.data["port"]))
-                else:
-                    route = self.choose_route(data_kode_barang["Jarak Dekat"], self.data["Spesial PR"], original_port)
-                    kpl.add_rute(self.pelabuhan,route)
+
+            original_port = kpl.rute_name[0]
+            if kpl.kategori == "TL":
+                # kpl.add_rute(self.pelabuhan,self.random_route(data_kode_barang["Jarak Jauh"],original_port, self.data["port"]))
+
+                route = self.data["Spesial TL PELNI"]["Daftar Rute Tol Laut"].copy()
+                random.shuffle(route)
+                old_index = route.index(original_port)
+                route.insert(0,route.pop(old_index))
+                route = [data_kode_barang["Jarak Jauh"], route]
+                kpl.add_rute(self.pelabuhan,route)
+            elif kpl.kategori == "PL":
+
+                # kpl.add_rute(self.pelabuhan,self.random_route(data_kode_barang["Jarak Jauh"],original_port, self.data["port"]))
+
+    
+                route = [original_port]
+                data = self.data["Spesial TL PELNI"]["Daftar Rute Pelni"].copy()
+                data.remove(original_port)
+
+                while len(data) >0:
                     
-                    # kpl.add_rute(self.pelabuhan,self.random_route(data_kode_barang["Jarak Dekat"],original_port)) 
+                    d = None
+                    min_index = 0
+                    min_name = None
+                    for n, i in enumerate(data):
+                        asal = route[-1]
+                        # print(self.pelabuhan.rute.keys())
+                        if ( i, asal) not in self.pelabuhan.rute:
+                            rute = self.pelabuhan.rute[( asal, i)]
+                        else:
+                            rute = self.pelabuhan.rute[( i, asal)]
+                        l = sum([ geopath.getPathLength(rute[i][0],rute[i][1],rute[i+1][0],rute[i+1][1]) for i in range(len(rute)-1)])
+                        if d ==  None:
+                            d = l
+                            min_name = i
+                        if l < d:
+                            d = l
+                            min_index = n
+                            min_name = i
+                    data.remove(min_name)
+                    route.append(min_name)
+                route = [data_kode_barang["Jarak Jauh"], route]
+                kpl.add_rute(self.pelabuhan,route)
+                # print(kpl.rute_name)
+            else:
+                route = self.choose_route(data_kode_barang["Jarak Dekat"], self.data["Spesial PR"], original_port)
+                kpl.add_rute(self.pelabuhan,route)
+                # kpl.add_rute(self.pelabuhan,self.random_route(data_kode_barang["Jarak Dekat"],original_port))
         return obj
 
     def random_route(self,data,original, port_list):
@@ -244,16 +285,17 @@ class GA_Trainer():
 
     def mutate(self,  individual, mutationRate):
         for i in individual:
-            for swapped in range(len(i.get_rute()[0])-1):
-                if(random.random() < mutationRate):
-                    swapped += 1
-                    swapWith = int(random.random() * (len(i.get_rute()[0])-1))+1
-                    
-                    city1 = i.get_rute()[0][swapped]
-                    city2 = i.get_rute()[0][swapWith]
-                    
-                    i.get_rute()[0][swapped] = city2
-                    i.get_rute()[0][swapWith] = city1
+            if i.kategori != "PL":
+                for swapped in range(len(i.get_rute()[0])-1):
+                    if(random.random() < mutationRate):
+                        swapped += 1
+                        swapWith = int(random.random() * (len(i.get_rute()[0])-1))+1
+                        
+                        city1 = i.get_rute()[0][swapped]
+                        city2 = i.get_rute()[0][swapWith]
+                        
+                        i.get_rute()[0][swapped] = city2
+                        i.get_rute()[0][swapWith] = city1
 #            i.add_rute(self.pelabuhan, [i.get_rute()[1],i.get_rute()[0]])
             
     def mutatePopulation(self, mutationRate):

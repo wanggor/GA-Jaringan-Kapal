@@ -63,7 +63,8 @@ def parsing_data_2(path):
         a[name].append([parse_dms(i['LATITUDE']),parse_dms(i['LONGITUDE'])])
     
     data['Rute'] = a
-    print(data['Rute'])
+    # print(data['Rute'])
+
     dataTL =pd.read_excel(path[0], sheet_name="TL_char", index_col = "Unnamed: 0").fillna(3).to_dict()
     dataPL =pd.read_excel(path[0], sheet_name="PL_char", index_col = "Unnamed: 0").fillna(3).to_dict()
     dataPR =pd.read_excel(path[0], sheet_name="PR_char", index_col = "Unnamed: 0").fillna(3).to_dict()
@@ -128,6 +129,12 @@ def parsing_data_2(path):
     data["Spesial PR"] = {}
     for key, val in spesial_pr.items():
         data["Spesial PR"][key]  = [ v for v in val if not isnan(v)]
+
+    data["Spesial TL PELNI"] = {}
+    rute_2 = pd.read_excel(path[0], sheet_name = "TL_PL_RUTE").applymap(lambda x: x.strip() if isinstance(x, str) else x).to_dict("list")
+    for key, val in rute_2.items():
+        data["Spesial TL PELNI"][key]  = [ v for v in val if not isnan(v)]
+
     return data
 
 def isnan(value):

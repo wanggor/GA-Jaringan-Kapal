@@ -1,4 +1,4 @@
-popSize = 3
-elitsize = 2
+popSize = 5
+elitsize = 3
 mutation = 1
 generation = 1
