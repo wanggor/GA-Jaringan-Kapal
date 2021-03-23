@@ -16,7 +16,7 @@ pyqtlet==0.3.3
 PyQtWebEngine==5.13.2
 python-dateutil==2.8.1
 pytz==2019.3
-requests==2.11.1
+requests==2.20.0
 retrying==1.3.3
 scipy==1.1.0
 six==1.13.0
